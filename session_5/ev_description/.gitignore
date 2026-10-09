@@ -1,0 +1,7 @@
+.gitignore
+build/
+install/
+log/
+.vscode/
+*.swp
+*~

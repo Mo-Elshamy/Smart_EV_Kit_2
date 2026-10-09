@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===================================================================== -->
+  <!-- WORKING REFERENCE TEMPLATE: 2D LiDAR (Slamtec RPLIDAR S3)             -->
+  <!-- Use this block as a guide to create the remaining vehicle frames.     -->
+  <!-- ===================================================================== -->
+  <link name="laser_frame"/>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser_frame"/>
+    <origin xyz="1.2 0.0 0.45" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <!-- ===================================================================== -->
+  <!-- STUDENT ASSIGNMENT: Duplicate and complete for the remaining sensors  -->
+  <!-- 1. WitMotion WT901 IMU   -> link: imu_link    | parent: base_link     -->
+  <!-- 2. Holybro M9N GNSS      -> link: gps_link    | parent: base_link     -->
+  <!-- 3. RealSense D456 Camera -> link: camera_link | parent: base_link     -->
+  <!-- 4. Optical Axis Sub-link -> link: camera_depth_optical_frame          -->
+  <!--                             parent: camera_link (NOT base_link!)      -->
+  <!-- ===================================================================== -->
+
+</robot>

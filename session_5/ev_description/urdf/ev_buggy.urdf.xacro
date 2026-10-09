@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<robot name="ev_buggy" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===================================================================== -->
+  <!-- ROOT COORDINATE FRAME (REP-105)                                         -->
+  <!-- base_link: Rear axle center projected to the ground plane               -->
+  <!-- ===================================================================== -->
+  <link name="base_link"/>
+
+  <!-- Include student sensor mount transforms -->
+  <xacro:include filename="$(find ev_description)/urdf/sensor_mounts.urdf.xacro"/>
+
+</robot>
