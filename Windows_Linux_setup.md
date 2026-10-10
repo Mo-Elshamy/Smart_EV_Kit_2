@@ -98,6 +98,4 @@ rviz2
 
 *Expected behavior:* The RViz 2 visualization window opens directly on your Windows desktop via WSLg.
 
-> **Course Note:** The physical Smart EV buggy and Jetson Orin Nano use **Ubuntu 22.04 and ROS 2 Humble**. ROS 2 Jazzy and Humble can communicate over the network for basic topics, but if you plan to compile course-specific packages (`ev_bringup`, `ev_description`), matching the distro (**ROS 2 Humble on Ubuntu 22.04**) avoids package compatibility issues.
-> 
->
+
