@@ -1,5 +1,8 @@
 <?xml version="1.0" ?>
-<robot name="waffle" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="waffle">
+  <material name="dark"><color rgba="0.3 0.3 0.3 1.0"/></material>
+  <material name="black"><color rgba="0.1 0.1 0.1 1.0"/></material>
+
   <link name="base_footprint"/>
 
   <joint name="base_joint" type="fixed">
@@ -10,17 +13,56 @@
 
   <link name="base_link">
     <visual>
-      <origin xyz="-0.064 0 0.0" rpy="0 0 0"/>
-      <geometry>
-        <mesh filename="package://turtlebot3_gazebo/models/turtlebot3_common/meshes/bases/waffle_base.stl" scale="0.001 0.001 0.001"/>
-      </geometry>
+      <origin xyz="-0.064 0 0.048" rpy="0 0 0"/>
+      <geometry><box size="0.265 0.265 0.089"/></geometry>
+      <material name="dark"/>
     </visual>
   </link>
+
+  <joint name="wheel_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_left_link"/>
+    <origin xyz="0 0.144 0.023" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="wheel_left_link">
+    <visual>
+      <geometry><cylinder radius="0.033" length="0.018"/></geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="wheel_right_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="wheel_right_link"/>
+    <origin xyz="0 -0.144 0.023" rpy="-1.5708 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+  <link name="wheel_right_link">
+    <visual>
+      <geometry><cylinder radius="0.033" length="0.018"/></geometry>
+      <material name="black"/>
+    </visual>
+  </link>
+
+  <joint name="caster_back_left_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_back_left_link"/>
+    <origin xyz="-0.177 0.064 -0.005" rpy="0 0 0"/>
+  </joint>
+  <link name="caster_back_left_link"/>
+
+  <joint name="caster_back_right_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="caster_back_right_link"/>
+    <origin xyz="-0.177 -0.064 -0.005" rpy="0 0 0"/>
+  </joint>
+  <link name="caster_back_right_link"/>
 
   <joint name="imu_joint" type="fixed">
     <parent link="base_link"/>
     <child link="imu_link"/>
-    <origin xyz="0.0 0 0.068" rpy="0 0 0"/>
+    <origin xyz="0 0 0.068" rpy="0 0 0"/>
   </joint>
   <link name="imu_link"/>
 
@@ -46,9 +88,9 @@
   <link name="camera_rgb_frame"/>
 
   <joint name="camera_rgb_optical_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="-1.57 0 -1.57"/>
     <parent link="camera_rgb_frame"/>
     <child link="camera_rgb_optical_frame"/>
+    <origin xyz="0 0 0" rpy="-1.5708 0 -1.5708"/>
   </joint>
   <link name="camera_rgb_optical_frame"/>
 

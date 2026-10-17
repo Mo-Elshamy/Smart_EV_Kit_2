@@ -3,21 +3,27 @@ Panels:
     Name: Displays
 Visualization Manager:
   Displays:
-    - Class: rviz_default_plugins/TF/TF
+    - Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Enabled: true
+      Description Source: Topic
+      Description Topic:
+        Value: /robot_description
+    - Class: rviz_default_plugins/TF
       Name: TF
       Enabled: true
       Show Arrows: true
       Show Axes: true
-    - Class: rviz_default_plugins/LaserScan/LaserScan
+    - Class: rviz_default_plugins/LaserScan
       Name: LaserScan
       Enabled: true
       Topic: /scan
       Selectable: true
-    - Class: rviz_default_plugins/Image/Image
+    - Class: rviz_default_plugins/Image
       Name: RGB Image
       Enabled: true
       Topic: /camera/image_raw
-    - Class: rviz_default_plugins/PointCloud2/PointCloud2
+    - Class: rviz_default_plugins/PointCloud2
       Name: Depth PointCloud
       Enabled: false
       Topic: /camera/depth/points
