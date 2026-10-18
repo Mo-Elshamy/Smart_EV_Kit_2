@@ -98,4 +98,13 @@ rviz2
 
 *Expected behavior:* The RViz 2 visualization window opens directly on your Windows desktop via WSLg.
 
+---
+
+### Next Step: GitHub SSH Configuration
+
+Once your ROS 2 environment is verified, configure your GitHub SSH key so you can pull, build, and push lab repositories without password/token authentication errors:
+
+👉 [GitHub SSH Key Setup Guide](GitHub_SSH_Setup.md)
+
+
 
