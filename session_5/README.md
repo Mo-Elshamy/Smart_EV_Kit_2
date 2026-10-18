@@ -16,6 +16,7 @@ It establishes the spatial relationships between the vehicle's origin frame (`ba
 8. [Optical vs. Robotics Frames Explained](#optical-vs-robotics-frames-explained)
 9. [Validation & CLI Auditing](#validation--cli-auditing)
 10. [Troubleshooting & Common Pitfalls](#troubleshooting--common-pitfalls)
+11. [Submission Guide (Pull Request)](#submission-guide-pull-request)
 
 ## System Architecture Context
 
@@ -260,17 +261,49 @@ evince frames.pdf
 | Changes to Xacro file not showing up in RViz | Did not build with `--symlink-install` or forgot to source the environment. | Run `colcon build --symlink-install && source install/setup.bash`. |
 | RViz screen shows complete black / empty grid | Fixed Frame in RViz is set to a non-existent link. | Set **Fixed Frame** at the top of the RViz Displays panel to `base_link`. |
 
-## Deliverable Checklist
+## Submission Guide (Pull Request)
 
-* [ ] `sensor_mounts.urdf.xacro` contains all 5 defined frames.
-* [ ] Workspace compiles cleanly with `colcon build --symlink-install`.
-* [ ] RViz 2 visualizes 5 distinct tripods positioned correctly around `base_link`.
-* [ ] `camera_depth_optical_frame` correctly displays $Z$ pointing forward.
-* [ ] `frames.pdf` generated and verified with zero broken transforms.
-* [ ] Feature branch committed and pushed to squad repository:
+Most students copy and work on `ev_description` inside an external ROS 2 workspace (such as `~/ev_ws/src/`). When you have completed and verified your lab, submit your work via GitHub Pull Request:
 
-  ```bash
-  git add urdf/sensor_mounts.urdf.xacro
-  git commit -m "feat(description): configure complete 5-zone sensor rig kinematic tree"
-  git push origin squad-kinematics
-  ```
+### Step 1: Place Your Deliverables in the Submission Folder
+Inside your local cloned `Smart_EV_Kit_2` repository, create a dedicated folder for your team or name:
+```text
+session_5/submissions/<team_or_participant_name>/
+```
+
+Using **VS Code Explorer**, **Ubuntu Files (GUI)**, or your preferred file manager, copy and paste the following files from your working workspace into that folder:
+1. `sensor_mounts.urdf.xacro` (your completed 5-frame rigid transform definitions).
+2. `frames.pdf` (the generated TF tree PDF from `ros2 run tf2_tools view_frames`).
+3. *(Optional)* A screenshot of RViz 2 visualizing the 5 coordinate tripods.
+
+### Step 2: Create an Isolated Branch & Push
+In your terminal, navigate to your cloned `Smart_EV_Kit_2` repository:
+
+```bash
+cd ~/ev_ws/src/Smart_EV_Kit_2   # (use the path where you cloned Smart_EV_Kit_2)
+
+# 1. Create and switch to your isolated PR branch (MUST start with pr_)
+git checkout -b pr_session5_<team_or_participant_name>
+
+# 2. Stage only your submission folder
+git add session_5/submissions/<team_or_participant_name>
+
+# 3. Commit your deliverables
+git commit -m "feat(session5): submit deliverables for <team_or_participant_name>"
+
+# 4. Push your branch to GitHub
+git push origin pr_session5_<team_or_participant_name>
+```
+
+### Step 3: Open a Pull Request & Stop
+1. Go to [Smart_EV_Kit_2 on GitHub](https://github.com/Mo-Elshamy/Smart_EV_Kit_2).
+2. You will see a yellow banner with your branch name. Click **"Compare & pull request"**.
+3. Set the PR Title: `[Session 5 Submission] <Team or Participant Name>`.
+4. Verify that:
+   - **Base repository/branch:** `main`
+   - **Head repository/branch:** `pr_session5_<team_or_participant_name>`
+5. Click the green **"Create pull request"** button.
+
+> ⛔ **IMPORTANT — STOP HERE!**
+> Do **NOT** merge or close the pull request yourself. Once your pull request is created, your submission is complete. The instructor will review your files, validate the transforms, and accept/merge the pull request.
+

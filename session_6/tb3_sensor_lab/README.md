@@ -140,7 +140,8 @@ ros2 topic echo /fix
 
 ## Step 5: Verify and submit (Checkpoint 5)
 
-Fill in this table for every sensor:
+### 5a. Verification Table
+Fill in this table for every sensor and save it as `sensor_table.md`:
 
 | Sensor | Topic | Message type | frame_id | Rate (Hz) |
 |---|---|---|---|---|
@@ -150,11 +151,59 @@ Fill in this table for every sensor:
 | Depth camera | | | | |
 | GNSS | | | | |
 
-Use `ros2 topic list -t`, `ros2 topic hz <topic>` and `ros2 topic echo <topic> --once --field header.frame_id`. Then run `ros2 run rqt_graph rqt_graph` and find `ros_gz_bridge`. Commit your work:
-```bash
-git add -A
-git commit -m "day2: add depth camera and gnss"
+Use `ros2 topic list -t`, `ros2 topic hz <topic>` and `ros2 topic echo <topic> --once --field header.frame_id`. Then run `ros2 run rqt_graph rqt_graph` to verify `ros_gz_bridge`.
+
+---
+
+### 5b. Submission Guide (Pull Request)
+
+Most students copy and work on `tb3_sensor_lab` inside an external ROS 2 workspace (e.g., `~/ev_ws/src/`). When you have completed and verified your lab, submit your work via GitHub Pull Request:
+
+#### 1. Place Your Deliverables in the Submission Folder
+Inside your local cloned `Smart_EV_Kit_2` repository, create a dedicated folder for your team or name:
+```text
+session_6/submissions/<team_or_participant_name>/
 ```
+
+Using **VS Code Explorer**, **Ubuntu Files (GUI)**, or your preferred file manager, copy and paste the following files from your working workspace into that folder:
+1. `model.sdf` (with depth camera and GNSS sensor blocks).
+2. `waffle.urdf` (with GNSS link and joint).
+3. `lab_world.sdf` (with NavSat plugin and spherical coordinates).
+4. `bridge.yaml` (with depth camera and GNSS bridge entries).
+5. `sensor_table.md` (your completed verification table from above).
+6. *(Optional)* A screenshot showing the RViz point cloud and `/fix` echo in the terminal.
+
+#### 2. Create an Isolated Branch & Push
+In your terminal, navigate to your cloned `Smart_EV_Kit_2` repository:
+
+```bash
+cd ~/ev_ws/src/Smart_EV_Kit_2   # (use the path where you cloned Smart_EV_Kit_2)
+
+# 1. Create and switch to your isolated PR branch (MUST start with pr_)
+git checkout -b pr_session6_<team_or_participant_name>
+
+# 2. Stage only your submission folder
+git add session_6/submissions/<team_or_participant_name>
+
+# 3. Commit your deliverables
+git commit -m "feat(session6): submit deliverables for <team_or_participant_name>"
+
+# 4. Push your branch to GitHub
+git push origin pr_session6_<team_or_participant_name>
+```
+
+#### 3. Open a Pull Request & Stop
+1. Go to [Smart_EV_Kit_2 on GitHub](https://github.com/Mo-Elshamy/Smart_EV_Kit_2).
+2. You will see a yellow banner with your branch name. Click **"Compare & pull request"**.
+3. Set the PR Title: `[Session 6 Submission] <Team or Participant Name>`.
+4. Verify that:
+   - **Base repository/branch:** `main`
+   - **Head repository/branch:** `pr_session6_<team_or_participant_name>`
+5. Click the green **"Create pull request"** button.
+
+> ⛔ **IMPORTANT — STOP HERE!**
+> Do **NOT** merge or close the pull request yourself. Once your pull request is created, your submission is complete. The instructor will review your files, validate the sensor data, and accept/merge the pull request.
+
 
 ## Stretch goals
 
