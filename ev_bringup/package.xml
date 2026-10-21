@@ -15,6 +15,8 @@
   <exec_depend>ev_description</exec_depend>
   <exec_depend>witmotion_ros</exec_depend>
   <exec_depend>nmea_navsat_driver</exec_depend>
+  <exec_depend>sllidar_ros2</exec_depend>
+  <exec_depend>laser_filters</exec_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

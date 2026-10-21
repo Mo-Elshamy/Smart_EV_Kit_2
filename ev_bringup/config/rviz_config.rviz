@@ -21,6 +21,28 @@ Visualization Manager:
       Show Names: true
       Marker Scale: 0.3
       Update Interval: 0.0
+    - Class: rviz_default_plugins/LaserScan
+      Name: Raw Scan
+      Enabled: false
+      Topic:
+        Value: /scan
+        Depth: 5
+        Durability Policy: Volatile
+      Size (m): 0.02
+      Color: 255; 80; 80
+      Color Transformer: FlatColor
+      Selectable: true
+    - Class: rviz_default_plugins/LaserScan
+      Name: Filtered Scan
+      Enabled: true
+      Topic:
+        Value: /scan_filtered
+        Depth: 5
+        Durability Policy: Volatile
+      Size (m): 0.04
+      Color: 0; 255; 200
+      Color Transformer: FlatColor
+      Selectable: true
   Global Options:
     Background Color: 48; 48; 48
     Fixed Frame: base_link
