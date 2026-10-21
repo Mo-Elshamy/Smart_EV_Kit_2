@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===================================================================== -->
+  <!-- 1. 2D PLANAR LiDAR: Slamtec RPLIDAR S3 (Overhead roll arch plate)     -->
+  <!-- ===================================================================== -->
+  <link name="laser_frame"/>
+
+  <joint name="laser_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="laser_frame"/>
+    <origin xyz="1.20 0.00 0.45" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <!-- ===================================================================== -->
+  <!-- 2. INERTIAL MEASUREMENT UNIT: WitMotion WT901 (Center spine / CG)     -->
+  <!-- ===================================================================== -->
+  <link name="imu_link"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0.40 0.00 0.25" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <!-- ===================================================================== -->
+  <!-- 3. GNSS RECEIVER: Holybro Pixhawk M9N (Elevated rear mast)            -->
+  <!-- ===================================================================== -->
+  <link name="gps_link"/>
+
+  <joint name="gps_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gps_link"/>
+    <origin xyz="0.10 0.00 1.10" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <!-- ===================================================================== -->
+  <!-- 4. STEREO DEPTH CAMERA: Stereolabs ZED 2i (Front impact cowl bracket) -->
+  <!-- ===================================================================== -->
+  <link name="camera_link"/>
+
+  <joint name="camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="camera_link"/>
+    <origin xyz="1.25 0.00 0.35" rpy="0.0 0.0 0.0"/>
+  </joint>
+
+  <!-- ===================================================================== -->
+  <!-- 5. OPTICAL AXIS SUB-LINK (Standard Computer Vision: Z-forward, X-right)-->
+  <!-- ===================================================================== -->
+  <link name="camera_depth_optical_frame"/>
+
+  <joint name="camera_optical_joint" type="fixed">
+    <parent link="camera_link"/>
+    <child link="camera_depth_optical_frame"/>
+    <origin xyz="0.00 0.00 0.00" rpy="-1.5708 0.0 -1.5708"/>
+  </joint>
+
+</robot>
