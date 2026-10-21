@@ -45,16 +45,16 @@ Visualization Manager:
       Selectable: true
     - Class: rviz_default_plugins/Image
       Name: ZED RGB Image
-      Enabled: false
+      Enabled: true
       Topic:
-        Value: /zed/zed_node/rgb/image_rect_color
+        Value: /zed/zed_node/rgb/color/rect/image
         Depth: 5
         Durability Policy: Volatile
     - Class: rviz_default_plugins/Image
       Name: ZED Depth Image
-      Enabled: false
+      Enabled: true
       Topic:
-        Value: /zed/zed_node/depth/depth_registered
+        Value: /zed/zed_node/image/depth_image
         Depth: 5
         Durability Policy: Volatile
     - Class: rviz_default_plugins/PointCloud2
