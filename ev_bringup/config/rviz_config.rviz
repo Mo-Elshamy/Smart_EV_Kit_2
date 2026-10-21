@@ -43,6 +43,31 @@ Visualization Manager:
       Color: 0; 255; 200
       Color Transformer: FlatColor
       Selectable: true
+    - Class: rviz_default_plugins/Image
+      Name: ZED RGB Image
+      Enabled: false
+      Topic:
+        Value: /zed/zed_node/rgb/image_rect_color
+        Depth: 5
+        Durability Policy: Volatile
+    - Class: rviz_default_plugins/Image
+      Name: ZED Depth Image
+      Enabled: false
+      Topic:
+        Value: /zed/zed_node/depth/depth_registered
+        Depth: 5
+        Durability Policy: Volatile
+    - Class: rviz_default_plugins/PointCloud2
+      Name: ZED PointCloud
+      Enabled: true
+      Topic:
+        Value: /zed/zed_node/point_cloud/cloud_registered
+        Depth: 5
+        Durability Policy: Volatile
+      Size (m): 0.02
+      Style: Points
+      Color Transformer: RGB8
+      Selectable: true
   Global Options:
     Background Color: 48; 48; 48
     Fixed Frame: base_link

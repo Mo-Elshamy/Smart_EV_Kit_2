@@ -1,0 +1,23 @@
+# Custom parameter overrides for Stereolabs ZED 2i on Smart EV Buggy
+# Optimized for Jetson Orin / Xavier (HD720 @ 15 FPS)
+
+/**:
+  ros__parameters:
+    general:
+      camera_model: 'zed2i'
+      grab_resolution: 'HD720'      # 1280x720
+      grab_frame_rate: 15           # 15 FPS grab rate to conserve Jetson compute
+      pub_frame_rate: 15.0          # 15 FPS publishing rate
+
+    depth:
+      depth_mode: 'PERFORMANCE'     # Options: 'PERFORMANCE', 'QUALITY', 'ULTRA'
+      min_depth: 0.3                # Minimum depth in meters
+      max_depth: 15.0               # Maximum depth in meters
+      point_cloud_freq: 10.0        # Point cloud publishing frequency (Hz)
+      publish_point_cloud: true
+
+    pos_tracking:
+      pos_tracking_enabled: true    # Compute visual odometry
+      publish_tf: false             # Set to false: robot_localization EKF manages odom -> base_link
+      publish_map_tf: false         # Set to false: slam_toolbox manages map -> odom
+      publish_imu_tf: false
