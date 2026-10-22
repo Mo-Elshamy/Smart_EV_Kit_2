@@ -59,8 +59,8 @@ def generate_launch_description():
     )
     imu_baud_arg = DeclareLaunchArgument(
         'imu_baud',
-        default_value='115200',
-        description='Baud rate for WT901 IMU'
+        default_value='9600',
+        description='Baud rate for WT901 IMU (hardware default is 9600)'
     )
     use_rviz_arg = DeclareLaunchArgument(
         'use_rviz',
