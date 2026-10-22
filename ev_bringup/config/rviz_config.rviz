@@ -7,20 +7,39 @@ Visualization Manager:
   Class: ""
   Displays:
     - Class: rviz_default_plugins/Grid
-      Name: Grid
+      Name: Ground Grid
       Enabled: true
       Plane: XY
       Cell Size: 1.0
       Plane Cell Count: 20
       Color: 160; 160; 164
+    - Class: rviz_default_plugins/RobotModel
+      Name: Smart EV Buggy Model
+      Enabled: true
+      Description Topic:
+        Value: /robot_description
+        Depth: 5
+        Durability Policy: Transient Local
+      Visual Enabled: true
+      Collision Enabled: false
     - Class: rviz_default_plugins/TF
-      Name: TF
+      Name: Vehicle Coordinate Frames (TF)
       Enabled: true
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Marker Scale: 0.3
       Update Interval: 0.0
+    - Class: rviz_imu_plugin/Imu
+      Name: WT901 IMU Orientation
+      Enabled: true
+      Topic:
+        Value: /imu/data
+        Depth: 5
+        Durability Policy: Volatile
+      Enable Axes: true
+      Enable Acceleration: false
+      Scale: 0.5
     - Class: rviz_default_plugins/LaserScan
       Name: Raw Scan
       Enabled: false
@@ -33,7 +52,7 @@ Visualization Manager:
       Color Transformer: FlatColor
       Selectable: true
     - Class: rviz_default_plugins/LaserScan
-      Name: Filtered Scan
+      Name: Filtered Scan (LiDAR)
       Enabled: true
       Topic:
         Value: /scan_filtered
@@ -58,7 +77,7 @@ Visualization Manager:
         Depth: 5
         Durability Policy: Volatile
     - Class: rviz_default_plugins/PointCloud2
-      Name: ZED PointCloud
+      Name: ZED 3D PointCloud
       Enabled: true
       Topic:
         Value: /zed/zed_node/point_cloud/cloud_registered
@@ -69,7 +88,7 @@ Visualization Manager:
       Color Transformer: RGB8
       Selectable: true
     - Class: rviz_default_plugins/Odometry
-      Name: Filtered Odometry (EKF)
+      Name: Fused Odometry (EKF)
       Enabled: true
       Topic:
         Value: /odometry/filtered
@@ -78,7 +97,7 @@ Visualization Manager:
       Shape: Arrow
       Color: 255; 215; 0
       Keep: 100
-      Length: 0.5
+      Length: 0.6
     - Class: rviz_default_plugins/Odometry
       Name: ZED Visual Odometry
       Enabled: false

@@ -29,13 +29,13 @@ def generate_launch_description():
     )
     use_gps_arg = DeclareLaunchArgument(
         'use_gps',
-        default_value='true',
-        description='Launch Holybro M9N GNSS driver'
+        default_value='false',
+        description='Launch Holybro M9N GNSS driver (set true when outdoors with GPS connected)'
     )
     use_imu_arg = DeclareLaunchArgument(
         'use_imu',
-        default_value='false',
-        description='Launch WT901 IMU driver (enable when hardware is ready)'
+        default_value='true',
+        description='Launch WT901 IMU driver'
     )
     use_gps_odom_arg = DeclareLaunchArgument(
         'use_gps_odom',
