@@ -16,6 +16,7 @@ Upgraded Smart EV sensor rig with kinematics, transform pipelines, hardware driv
   - [4. IMU 9-Axis Testing & 3D RViz (WitMotion WT901)](#4-imu-9-axis-testing--3d-rviz-witmotion-wt901)
   - [5. Combined Telemetry Bringup (GPS + IMU)](#5-combined-telemetry-bringup-gps--imu)
   - [6. Stereo Depth Camera Testing (Stereolabs ZED 2i)](#6-stereo-depth-camera-testing-stereolabs-zed-2i)
+  - [7. Multi-Sensor Localization & EKF Fusion (Stage 5)](#7-multi-sensor-localization--ekf-fusion-stage-5)
 - [Udev Rules (Persistent Device Names)](#udev-rules-persistent-device-names)
 
 ---
@@ -46,6 +47,12 @@ src/Smart_EV_Kit_2/
 │   ├── scripts/
 │   │   ├── imu_tf_broadcaster.py            # Dynamic 3D TF orientation broadcaster for RViz
 │   │   └── setup_imu.sh                     # Automated CH340 kernel module & udev installer
+│   └── CMakeLists.txt, package.xml
+├── ev_localization/            # Stage 5: Sensor fusion & EKF state estimation
+│   ├── launch/
+│   │   └── localization.launch.py       # Full pipeline: EKF + NavSat + State Publisher + RViz
+│   ├── config/
+│   │   └── ekf_fusion_params.yaml       # robot_localization EKF (ZED + IMU + GPS) config
 │   └── CMakeLists.txt, package.xml
 └── ev_sensors/                 # Hardware driver implementations
     ├── sllidar_ros2/           # Slamtec RPLIDAR C++ driver (S3 / A-series / C-series)
@@ -303,6 +310,52 @@ ros2 topic hz /zed/zed_node/point_cloud/cloud_registered
 
 # Check Odometry / Visual odometry
 ros2 topic echo /zed/zed_node/odom --once
+```
+
+---
+
+### 7. Multi-Sensor Localization & EKF Fusion (Stage 5)
+
+The `ev_localization` package provides an Extended Kalman Filter (`robot_localization`) that fuses ZED 2i visual odometry, WitMotion WT901 IMU, and Holybro M9N GNSS into a smooth, drift-resistant state estimate (`/odometry/filtered`) and continuously publishes the dynamic transform `odom -> base_link`.
+
+#### A. Indoor / Desk Test (ZED 2i + WT901 IMU)
+When testing indoors without GPS fix:
+```bash
+ros2 launch ev_localization localization.launch.py \
+  use_zed:=true \
+  use_imu:=true \
+  use_gps:=false \
+  use_gps_odom:=false \
+  imu_port:=/dev/ttyIMU \
+  imu_baud:=9600
+```
+
+#### B. Full Multi-Sensor Fusion (ZED 2i + IMU + Holybro GNSS)
+When testing outdoors with satellite line-of-sight:
+```bash
+ros2 launch ev_localization localization.launch.py \
+  use_zed:=true \
+  use_imu:=true \
+  use_gps:=true \
+  use_gps_odom:=true \
+  gps_port:=/dev/ttyGPS \
+  imu_port:=/dev/ttyIMU \
+  imu_baud:=9600
+```
+
+#### C. Verification & Diagnostic Commands
+```bash
+# 1. Verify fused odometry topic output (30 Hz)
+ros2 topic hz /odometry/filtered
+
+# 2. Inspect fused pose, velocities, and covariances
+ros2 topic echo /odometry/filtered --once
+
+# 3. Check dynamic transform (odom -> base_link) published by EKF
+ros2 run tf2_ros tf2_echo odom base_link
+
+# 4. View full TF tree
+ros2 run tf2_tools view_frames
 ```
 
 ---
