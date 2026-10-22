@@ -354,6 +354,33 @@ ros2 run tf2_tools view_frames
 
 ---
 
+### 8. 2D Online SLAM Mapping (Stage 6)
+
+The `mapping_slam.launch.py` in `ev_localization` runs `slam_toolbox` in online asynchronous mode, fusing:
+- **LiDAR Scan:** `/scan_filtered` from RPLIDAR S3 with roll-cage pillar filtering.
+- **Odometry & Vehicle Kinematics:** `/odometry/filtered` and `odom -> base_link` from `localization.launch.py` (ZED 2i VO + WT901 IMU).
+- **Map Output:** Continuously updates the 2D occupancy grid `/map` (5cm resolution) and broadcasts the dynamic world transform `map -> odom`.
+
+#### A. Run 2D SLAM Bringup
+```bash
+ros2 launch ev_localization mapping_slam.launch.py
+```
+*(In RViz, set **Fixed Frame** to `map` to observe the global occupancy grid build around the vehicle in real time).*
+
+#### B. Verification & Diagnostic Commands
+```bash
+# 1. Check map topic publication:
+ros2 topic hz /map
+
+# 2. Verify complete transform chain (map -> odom -> base_link -> laser_frame):
+ros2 run tf2_ros tf2_echo map base_link
+
+# 3. Save the built map:
+ros2 run nav2_map_server map_saver_cli -f ~/my_ev_map
+```
+
+---
+
 ## ⚙️ Udev Rules (Persistent Device Names)
 
 To avoid changing port names (e.g. `/dev/ttyUSB0` vs `/dev/ttyUSB1`) and grant permanent permissions across reboots:

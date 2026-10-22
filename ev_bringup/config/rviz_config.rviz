@@ -109,6 +109,17 @@ Visualization Manager:
       Color: 0; 180; 255
       Keep: 100
       Length: 0.4
+    - Class: rviz_default_plugins/Map
+      Name: 2D Occupancy Map
+      Enabled: true
+      Topic:
+        Value: /map
+        Depth: 5
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color Scheme: map
+      Alpha: 0.7
+      Draw Behind: true
   Global Options:
     Background Color: 48; 48; 48
     Fixed Frame: base_link
