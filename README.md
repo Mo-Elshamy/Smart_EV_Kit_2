@@ -13,8 +13,9 @@ Upgraded Smart EV sensor rig with kinematics, transform pipelines, hardware driv
   - [1. Kinematic TF2 Frames & RViz](#1-kinematic-tf2-frames--rviz)
   - [2. GNSS / GPS Testing (Holybro M9N)](#2-gnss--gps-testing-holybro-m9n)
   - [3. 2D LiDAR Testing (Slamtec RPLIDAR S3)](#3-2d-lidar-testing-slamtec-rplidar-s3)
-  - [4. Combined Telemetry Bringup](#4-combined-telemetry-bringup)
-  - [5. Stereo Depth Camera Testing (Stereolabs ZED 2i)](#5-stereo-depth-camera-testing-stereolabs-zed-2i)
+  - [4. IMU 9-Axis Testing & 3D RViz (WitMotion WT901)](#4-imu-9-axis-testing--3d-rviz-witmotion-wt901)
+  - [5. Combined Telemetry Bringup (GPS + IMU)](#5-combined-telemetry-bringup-gps--imu)
+  - [6. Stereo Depth Camera Testing (Stereolabs ZED 2i)](#6-stereo-depth-camera-testing-stereolabs-zed-2i)
 - [Udev Rules (Persistent Device Names)](#udev-rules-persistent-device-names)
 
 ---
@@ -32,15 +33,19 @@ src/Smart_EV_Kit_2/
 │   ├── launch/
 │   │   ├── view_frames.launch.py            # Static vehicle frame visualizer
 │   │   ├── gps.launch.py                    # Standalone Holybro M9N GNSS driver
-│   │   ├── imu.launch.py                    # Standalone WitMotion WT901 IMU driver
+│   │   ├── imu.launch.py                    # Standalone WitMotion WT901 IMU + 3D RViz
 │   │   ├── telemetry_sensors.launch.py      # Composite GPS + IMU + TF bringup
 │   │   ├── lidar.launch.py                  # Standalone RPLIDAR S3 + filter
 │   │   ├── lidar_and_description.launch.py  # LiDAR + Roll-cage filter + Vehicle TF + RViz
 │   │   └── depth_camera.launch.py           # ZED 2i Stereo Depth + RGB + PointCloud + RViz
 │   ├── config/
 │   │   ├── rviz_config.rviz                 # RViz profile with PointCloud, Scans, and Video
+│   │   ├── rviz_imu.rviz                    # Dedicated 3D orientation visualizer profile
 │   │   ├── laser_filter_params.yaml         # Angular bounds filter for roll-cage pillars
 │   │   └── zed2i_params.yaml                # ZED 2i camera and CUDA depth tuning overrides
+│   ├── scripts/
+│   │   ├── imu_tf_broadcaster.py            # Dynamic 3D TF orientation broadcaster for RViz
+│   │   └── setup_imu.sh                     # Automated CH340 kernel module & udev installer
 │   └── CMakeLists.txt, package.xml
 └── ev_sensors/                 # Hardware driver implementations
     ├── sllidar_ros2/           # Slamtec RPLIDAR C++ driver (S3 / A-series / C-series)
@@ -58,7 +63,7 @@ src/Smart_EV_Kit_2/
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **GNSS Receiver** | Holybro M9N (FTDI) | `/dev/ttyUSB0` (or `/dev/ttyGPS`) | **`115200`** | `nmea_navsat_driver` | `/fix`, `/vel`, `/time_reference` |
 | **2D LiDAR** | Slamtec RPLIDAR S3 (CP2102N) | `/dev/ttyUSB1` (or `/dev/ttyLIDAR`) | **`1000000`** | `sllidar_ros2` | `/scan`, `/scan_filtered` |
-| **IMU (9-Axis)** | WitMotion WT901 | `/dev/ttyIMU` | **`115200`** | `witmotion_ros` | `/imu/data` |
+| **IMU (9-Axis)** | WitMotion WT901 (CH340) | `/dev/ttyIMU` (or `/dev/ttyUSB0`) | **`9600`** | `witmotion_ros` | `/imu/data` |
 | **Depth Camera** | Stereolabs ZED 2i | USB 3.0 (`/dev/video0`) | N/A | `zed_wrapper` | `/zed/zed_node/rgb/color/rect/image`<br>`/zed/zed_node/image/depth_image`<br>`/zed/zed_node/point_cloud/cloud_registered`<br>`/zed/zed_node/odom` |
 
 ---
@@ -98,7 +103,13 @@ chmod +x ~/ZED_SDK_Jetson_5.2.run
 ~/ZED_SDK_Jetson_5.2.run -- silent skip_tools
 ```
 
-### 4. Build the Workspace Safely
+### 4. Install WitMotion CH340 Kernel Module & Udev Rule
+Stock Jetson Tegra kernels (`6.8.12-tegra`) disable the CH340 module by default. Run the automated installer:
+```bash
+bash ~/ev_ws/src/Smart_EV_Kit_2/ev_bringup/scripts/setup_imu.sh
+```
+
+### 5. Build the Workspace Safely
 Always compile with throttled parallel jobs (`-j2` and `--parallel-workers 1`) to keep RAM usage within limits:
 ```bash
 cd ~/ev_ws
@@ -156,6 +167,16 @@ During platform bringup on ROS 2 Jazzy, several issues were diagnosed and resolv
   - Configured `depth_mode: 'ULTRA'` in `zed2i_params.yaml`, enabling high-performance, crisp stereo depth running directly on CUDA without TensorRT.
   - Enabled `debug.use_pub_timestamps: true`, locking all message timestamps to current ROS time (`now()`) to eliminate TF extrapolation timeouts.
   - Updated `rviz_config.rviz` to automatically display `/zed/zed_node/rgb/color/rect/image`, colorized depth on `/zed/zed_node/image/depth_image`, and 3D point cloud on `/zed/zed_node/point_cloud/cloud_registered`.
+
+### 9. WitMotion WT901 CH340 Driver & Baud Rate Resolution
+- **Issue:**
+  1. No `/dev/ttyUSB*` port was created when plugging in the IMU because the stock Jetson kernel disabled `CONFIG_USB_SERIAL_CH341`.
+  2. No IMU data was published on `/imu/data` because `witmotion_ros` measurement channels default to `false`.
+  3. The IMU axes did not move in RViz because the hardware runs at **`9600` baud** (not `115200`), and `use_native_orientation: true` was waiting for quaternion packets that the sensor does not emit.
+- **Fix:**
+  - Built and loaded `ch341.ko` for `6.8.12-1021-tegra` and added udev rule `/etc/udev/rules.d/99-witmotion.rules` for `/dev/ttyIMU`.
+  - Configured `imu.launch.py` with `baud_rate: 9600`, `timeout_ms: 0`, `use_native_orientation: false`, and enabled all measurement flags (`orientation`, `acceleration`, `angular_velocity`).
+  - Implemented [`imu_tf_broadcaster.py`](ev_bringup/scripts/imu_tf_broadcaster.py) and [`rviz_imu.rviz`](ev_bringup/config/rviz_imu.rviz) for live 1:1 real-time 3D orientation visualization in RViz.
 
 ---
 
@@ -227,16 +248,37 @@ ros2 topic echo /scan_filtered --once
 
 ---
 
-### 4. Combined Telemetry Bringup
+### 4. IMU 9-Axis Testing & 3D RViz (WitMotion WT901)
+
+**Run standalone IMU with live 3D orientation in RViz:**
+```bash
+ros2 launch ev_bringup imu.launch.py port:=/dev/ttyIMU baud:=9600 use_rviz:=true
+```
+
+**Verify data stream in terminal:**
+```bash
+# Check IMU topic
+ros2 topic list | grep imu
+
+# Check publishing rate (~10 - 20 Hz)
+ros2 topic hz /imu/data
+
+# Inspect live orientation, angular velocities & linear accelerations
+ros2 topic echo /imu/data --once
+```
+
+---
+
+### 5. Combined Telemetry Bringup (GPS + IMU)
 When testing both GPS and IMU together:
 ```bash
-ros2 launch ev_bringup telemetry_sensors.launch.py gps_port:=/dev/ttyUSB0 imu_port:=/dev/ttyUSB1
+ros2 launch ev_bringup telemetry_sensors.launch.py gps_port:=/dev/ttyUSB0 imu_port:=/dev/ttyIMU imu_baud:=9600
 ```
 *(If the IMU is disconnected, simply pass `use_imu:=false`)*.
 
 ---
 
-### 5. Stereo Depth Camera Testing (Stereolabs ZED 2i)
+### 6. Stereo Depth Camera Testing (Stereolabs ZED 2i)
 
 **Ensure device permissions:**
 ```bash
@@ -267,11 +309,16 @@ ros2 topic echo /zed/zed_node/odom --once
 
 ## ⚙️ Udev Rules (Persistent Device Names)
 
-To avoid changing port names (e.g. `/dev/ttyUSB0` vs `/dev/ttyUSB1`) and grant permanent permissions across reboots, install the provided udev rules:
+To avoid changing port names (e.g. `/dev/ttyUSB0` vs `/dev/ttyUSB1`) and grant permanent permissions across reboots:
 
-```bash
-bash ~/ev_ws/src/Smart_EV_Kit_2/ev_sensors/sllidar_ros2/scripts/create_udev_rules.sh
-```
+1. **LiDAR:**
+   ```bash
+   bash ~/ev_ws/src/Smart_EV_Kit_2/ev_sensors/sllidar_ros2/scripts/create_udev_rules.sh
+   ```
+2. **IMU:**
+   ```bash
+   bash ~/ev_ws/src/Smart_EV_Kit_2/ev_bringup/scripts/setup_imu.sh
+   ```
 
 Unplug and replug the USB cables. The devices will permanently link to:
 - **LiDAR:** `/dev/ttyLIDAR` (and `/dev/rplidar`)

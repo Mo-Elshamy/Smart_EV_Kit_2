@@ -12,4 +12,11 @@ install(
   DESTINATION share/${PROJECT_NAME}
 )
 
+install(
+  PROGRAMS
+    scripts/imu_tf_broadcaster.py
+    scripts/setup_imu.sh
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_package()
