@@ -46,7 +46,8 @@ src/Smart_EV_Kit_2/
 │   │   └── zed2i_params.yaml                # ZED 2i camera and CUDA depth tuning overrides
 │   ├── scripts/
 │   │   ├── imu_tf_broadcaster.py            # Dynamic 3D TF orientation broadcaster for RViz
-│   │   └── setup_imu.sh                     # Automated CH340 kernel module & udev installer
+│   │   ├── setup_imu.sh                     # Automated CH340 kernel module & udev installer
+│   │   └── setup_gps.sh                     # Persistent FTDI udev rule installer for Holybro M9N
 │   └── CMakeLists.txt, package.xml
 ├── ev_localization/            # Stage 5: Sensor fusion & EKF state estimation
 │   ├── launch/
@@ -318,29 +319,22 @@ ros2 topic echo /zed/zed_node/odom --once
 
 The `ev_localization` package provides an Extended Kalman Filter (`robot_localization`) that fuses ZED 2i visual odometry, WitMotion WT901 IMU, and Holybro M9N GNSS into a smooth, drift-resistant state estimate (`/odometry/filtered`) and continuously publishes the dynamic transform `odom -> base_link`.
 
-#### A. Indoor / Desk Test (ZED 2i + WT901 IMU)
-When testing indoors without GPS fix:
+The vehicle model in RViz contains complete **3D visual geometry** including the vehicle chassis, rubber wheels, roll cage structure, and realistic mounts for the RPLIDAR S3, ZED 2i stereo camera, WT901 IMU, and Holybro GPS.
+
+#### A. Standard Bench / Desk Bringup (ZED 2i + WT901 IMU)
+By default, `localization.launch.py` automatically enables the ZED 2i camera and WT901 IMU (at 9600 baud on `/dev/ttyIMU`), and keeps GPS disabled so it brings up immediately without missing hardware errors:
 ```bash
-ros2 launch ev_localization localization.launch.py \
-  use_zed:=true \
-  use_imu:=true \
-  use_gps:=false \
-  use_gps_odom:=false \
-  imu_port:=/dev/ttyIMU \
-  imu_baud:=9600
+ros2 launch ev_localization localization.launch.py
 ```
+*(The RViz display defaults to `Fixed Frame: base_link` for instant vehicle inspection with zero TF latency; switch to `Fixed Frame: odom` to observe world-coordinate movement).*
 
 #### B. Full Multi-Sensor Fusion (ZED 2i + IMU + Holybro GNSS)
 When testing outdoors with satellite line-of-sight:
 ```bash
 ros2 launch ev_localization localization.launch.py \
-  use_zed:=true \
-  use_imu:=true \
   use_gps:=true \
   use_gps_odom:=true \
-  gps_port:=/dev/ttyGPS \
-  imu_port:=/dev/ttyIMU \
-  imu_baud:=9600
+  gps_port:=/dev/ttyGPS
 ```
 
 #### C. Verification & Diagnostic Commands
@@ -371,6 +365,10 @@ To avoid changing port names (e.g. `/dev/ttyUSB0` vs `/dev/ttyUSB1`) and grant p
 2. **IMU:**
    ```bash
    bash ~/ev_ws/src/Smart_EV_Kit_2/ev_bringup/scripts/setup_imu.sh
+   ```
+3. **GNSS / GPS:**
+   ```bash
+   bash ~/ev_ws/src/Smart_EV_Kit_2/ev_bringup/scripts/setup_gps.sh
    ```
 
 Unplug and replug the USB cables. The devices will permanently link to:
