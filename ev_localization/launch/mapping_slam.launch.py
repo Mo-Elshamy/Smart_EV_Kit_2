@@ -10,11 +10,13 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
     pkg_ev_localization = get_package_share_directory('ev_localization')
+    pkg_slam_toolbox = get_package_share_directory('slam_toolbox')
 
     default_slam_params = os.path.join(pkg_ev_localization, 'config', 'slam_toolbox_params.yaml')
     default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'rviz_config.rviz')
     lidar_launch_file = os.path.join(pkg_ev_bringup, 'launch', 'lidar.launch.py')
     localization_launch_file = os.path.join(pkg_ev_localization, 'launch', 'localization.launch.py')
+    slam_launch_file = os.path.join(pkg_slam_toolbox, 'launch', 'online_async_launch.py')
 
     # Launch Arguments
     use_rviz_arg = DeclareLaunchArgument(
@@ -99,16 +101,14 @@ def generate_launch_description():
         }.items()
     )
 
-    # 3. slam_toolbox online asynchronous SLAM node (publishes map -> odom and /map)
-    slam_toolbox_node = Node(
-        package='slam_toolbox',
-        executable='async_slam_toolbox_node',
-        name='async_slam_toolbox',
-        output='screen',
-        parameters=[
-            LaunchConfiguration('slam_params_file'),
-            {'use_sim_time': False}
-        ]
+    # 3. slam_toolbox online asynchronous SLAM (Lifecycle configured and activated)
+    slam_toolbox_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(slam_launch_file),
+        launch_arguments={
+            'slam_params_file': LaunchConfiguration('slam_params_file'),
+            'use_sim_time': 'false',
+            'autostart': 'true'
+        }.items()
     )
 
     # 4. RViz 2 Visualizer
@@ -135,6 +135,6 @@ def generate_launch_description():
         slam_params_file_arg,
         lidar_launch,
         localization_launch,
-        slam_toolbox_node,
+        slam_toolbox_launch,
         rviz_node
     ])
