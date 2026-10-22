@@ -33,6 +33,11 @@ def generate_launch_description():
         default_value='true',
         description='Launch RViz 2 to view depth images and point clouds'
     )
+    publish_robot_state_arg = DeclareLaunchArgument(
+        'publish_robot_state',
+        default_value='true',
+        description='Launch robot_state_publisher for vehicle kinematics'
+    )
 
     # Robot State Publisher for vehicle kinematics & sensor mounts
     robot_description_content = ParameterValue(
@@ -48,7 +53,8 @@ def generate_launch_description():
         parameters=[{
             'robot_description': robot_description_content,
             'use_sim_time': False
-        }]
+        }],
+        condition=IfCondition(LaunchConfiguration('publish_robot_state'))
     )
 
     # Stereolabs ZED Wrapper Launch
@@ -78,6 +84,7 @@ def generate_launch_description():
         camera_model_arg,
         camera_name_arg,
         use_rviz_arg,
+        publish_robot_state_arg,
         robot_state_publisher_node,
         zed_launch,
         rviz_node

@@ -110,7 +110,8 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(depth_camera_launch_file),
         launch_arguments={
             'camera_model': 'zed2i',
-            'use_rviz': 'false'
+            'use_rviz': 'false',
+            'publish_robot_state': 'false'
         }.items(),
         condition=IfCondition(LaunchConfiguration('use_zed'))
     )
