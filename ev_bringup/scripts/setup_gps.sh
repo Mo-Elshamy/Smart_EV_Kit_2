@@ -11,3 +11,4 @@ sudo udevadm trigger
 echo "=== Done! Verifying port ==="
 sleep 1
 ls -la /dev/ttyGPS 2>/dev/null || echo "Please replug the GPS USB cable if /dev/ttyGPS does not immediately appear."
+

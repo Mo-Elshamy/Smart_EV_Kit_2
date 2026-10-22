@@ -111,7 +111,7 @@ Visualization Manager:
       Length: 0.4
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: odom
+    Fixed Frame: base_link
     Frame Rate: 30
   Tools:
     - Class: rviz_default_plugins/Interact

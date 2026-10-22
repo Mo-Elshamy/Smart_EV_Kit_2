@@ -4,7 +4,28 @@
   <!-- ===================================================================== -->
   <!-- 1. 2D PLANAR LiDAR: Slamtec RPLIDAR S3 (Overhead roll arch plate)     -->
   <!-- ===================================================================== -->
-  <link name="laser_frame"/>
+  <link name="laser_frame">
+    <visual>
+      <!-- LiDAR base puck -->
+      <origin xyz="0 0 -0.015" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.038" length="0.035"/>
+      </geometry>
+      <material name="lidar_black">
+        <color rgba="0.1 0.1 0.1 1.0"/>
+      </material>
+    </visual>
+    <visual>
+      <!-- LiDAR optic window ring -->
+      <origin xyz="0 0 0.005" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.035" length="0.015"/>
+      </geometry>
+      <material name="lidar_optical_ring">
+        <color rgba="0.0 0.95 0.85 0.9"/>
+      </material>
+    </visual>
+  </link>
 
   <joint name="laser_joint" type="fixed">
     <parent link="base_link"/>
@@ -15,7 +36,28 @@
   <!-- ===================================================================== -->
   <!-- 2. INERTIAL MEASUREMENT UNIT: WitMotion WT901 (Center spine / CG)     -->
   <!-- ===================================================================== -->
-  <link name="imu_link"/>
+  <link name="imu_link">
+    <visual>
+      <!-- Anodized aluminum IMU enclosure -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.052 0.038 0.016"/>
+      </geometry>
+      <material name="imu_blue">
+        <color rgba="0.1 0.45 0.95 1.0"/>
+      </material>
+    </visual>
+    <visual>
+      <!-- Status LED / Pin header accent -->
+      <origin xyz="0.02 0 0.009" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.008 0.008 0.003"/>
+      </geometry>
+      <material name="imu_led">
+        <color rgba="0.2 1.0 0.2 1.0"/>
+      </material>
+    </visual>
+  </link>
 
   <joint name="imu_joint" type="fixed">
     <parent link="base_link"/>
@@ -26,7 +68,38 @@
   <!-- ===================================================================== -->
   <!-- 3. GNSS RECEIVER: Holybro Pixhawk M9N (Elevated rear mast)            -->
   <!-- ===================================================================== -->
-  <link name="gps_link"/>
+  <link name="gps_link">
+    <visual>
+      <!-- Mast pole -->
+      <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.006" length="0.50"/>
+      </geometry>
+      <material name="carbon_mast">
+        <color rgba="0.15 0.15 0.15 1.0"/>
+      </material>
+    </visual>
+    <visual>
+      <!-- GPS dome puck antenna -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <cylinder radius="0.032" length="0.016"/>
+      </geometry>
+      <material name="gps_white">
+        <color rgba="0.95 0.95 0.95 1.0"/>
+      </material>
+    </visual>
+    <visual>
+      <!-- Direction arrow mark -->
+      <origin xyz="0.012 0 0.009" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.015 0.005 0.002"/>
+      </geometry>
+      <material name="gps_red">
+        <color rgba="0.9 0.1 0.1 1.0"/>
+      </material>
+    </visual>
+  </link>
 
   <joint name="gps_joint" type="fixed">
     <parent link="base_link"/>
@@ -37,7 +110,36 @@
   <!-- ===================================================================== -->
   <!-- 4. STEREO DEPTH CAMERA: Stereolabs ZED 2i (Front impact cowl bracket) -->
   <!-- ===================================================================== -->
-  <link name="camera_link"/>
+  <link name="camera_link">
+    <visual>
+      <!-- Main camera bar body -->
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.035 0.175 0.030"/>
+      </geometry>
+      <material name="zed_body">
+        <color rgba="0.12 0.12 0.12 1.0"/>
+      </material>
+    </visual>
+    <!-- Left optical lens -->
+    <visual>
+      <origin xyz="0.018 0.06 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.011" length="0.004"/>
+      </geometry>
+      <material name="zed_lens">
+        <color rgba="0.1 0.2 0.4 1.0"/>
+      </material>
+    </visual>
+    <!-- Right optical lens -->
+    <visual>
+      <origin xyz="0.018 -0.06 0" rpy="0 1.570796 0"/>
+      <geometry>
+        <cylinder radius="0.011" length="0.004"/>
+      </geometry>
+      <material name="zed_lens"/>
+    </visual>
+  </link>
 
   <joint name="camera_joint" type="fixed">
     <parent link="base_link"/>
