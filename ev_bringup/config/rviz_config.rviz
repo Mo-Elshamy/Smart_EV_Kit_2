@@ -68,9 +68,31 @@ Visualization Manager:
       Style: Points
       Color Transformer: RGB8
       Selectable: true
+    - Class: rviz_default_plugins/Odometry
+      Name: Filtered Odometry (EKF)
+      Enabled: true
+      Topic:
+        Value: /odometry/filtered
+        Depth: 5
+        Durability Policy: Volatile
+      Shape: Arrow
+      Color: 255; 215; 0
+      Keep: 100
+      Length: 0.5
+    - Class: rviz_default_plugins/Odometry
+      Name: ZED Visual Odometry
+      Enabled: false
+      Topic:
+        Value: /zed/zed_node/odom
+        Depth: 5
+        Durability Policy: Volatile
+      Shape: Arrow
+      Color: 0; 180; 255
+      Keep: 100
+      Length: 0.4
   Global Options:
     Background Color: 48; 48; 48
-    Fixed Frame: base_link
+    Fixed Frame: odom
     Frame Rate: 30
   Tools:
     - Class: rviz_default_plugins/Interact
