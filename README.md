@@ -47,7 +47,8 @@ src/Smart_EV_Kit_2/
 │   ├── scripts/
 │   │   ├── imu_tf_broadcaster.py            # Dynamic 3D TF orientation broadcaster for RViz
 │   │   ├── setup_imu.sh                     # Automated CH340 kernel module & udev installer
-│   │   └── setup_gps.sh                     # Persistent FTDI udev rule installer for Holybro M9N
+│   │   ├── setup_gps.sh                     # Persistent FTDI udev rule installer for Holybro M9N
+│   │   └── setup_lidar.sh                   # Persistent CP2102 udev rule installer for Slamtec S3
 │   └── CMakeLists.txt, package.xml
 ├── ev_localization/            # Stage 5: Sensor fusion & EKF state estimation
 │   ├── launch/
@@ -356,14 +357,18 @@ ros2 run tf2_tools view_frames
 
 ### 8. 2D Online SLAM Mapping (Stage 6)
 
-The `mapping_slam.launch.py` in `ev_localization` runs `slam_toolbox` in online asynchronous mode, fusing:
+The `mapping_slam.launch.py` in `ev_localization` runs `slam_toolbox` in online asynchronous mode, fully managed via ROS 2 lifecycle states (`configure` $\rightarrow$ `activate`):
 - **LiDAR Scan:** `/scan_filtered` from RPLIDAR S3 with roll-cage pillar filtering.
 - **Odometry & Vehicle Kinematics:** `/odometry/filtered` and `odom -> base_link` from `localization.launch.py` (ZED 2i VO + WT901 IMU).
-- **Map Output:** Continuously updates the 2D occupancy grid `/map` (5cm resolution) and broadcasts the dynamic world transform `map -> odom`.
+- **Map Output:** Continuously updates the 2D occupancy grid `/map` (5cm resolution, 10 Hz scan rate) and broadcasts the dynamic world transform `map -> odom`.
 
 #### A. Run 2D SLAM Bringup
 ```bash
+# Standard bringup with all sensors connected:
 ros2 launch ev_localization mapping_slam.launch.py
+
+# If running bench test without IMU connected:
+ros2 launch ev_localization mapping_slam.launch.py lidar_port:=/dev/ttyUSB0 use_imu:=false
 ```
 *(In RViz, set **Fixed Frame** to `map` to observe the global occupancy grid build around the vehicle in real time).*
 
@@ -372,10 +377,14 @@ ros2 launch ev_localization mapping_slam.launch.py
 # 1. Check map topic publication:
 ros2 topic hz /map
 
-# 2. Verify complete transform chain (map -> odom -> base_link -> laser_frame):
+# 2. Inspect map metadata and dimensions:
+ros2 topic echo /map --once | head -n 25
+
+# 3. Verify complete transform chain (map -> odom -> base_link -> laser_frame):
+ros2 run tf2_ros tf2_echo map odom
 ros2 run tf2_ros tf2_echo map base_link
 
-# 3. Save the built map:
+# 4. Save the built map:
 ros2 run nav2_map_server map_saver_cli -f ~/my_ev_map
 ```
 
@@ -387,7 +396,7 @@ To avoid changing port names (e.g. `/dev/ttyUSB0` vs `/dev/ttyUSB1`) and grant p
 
 1. **LiDAR:**
    ```bash
-   bash ~/ev_ws/src/Smart_EV_Kit_2/ev_sensors/sllidar_ros2/scripts/create_udev_rules.sh
+   bash ~/ev_ws/src/Smart_EV_Kit_2/ev_bringup/scripts/setup_lidar.sh
    ```
 2. **IMU:**
    ```bash
