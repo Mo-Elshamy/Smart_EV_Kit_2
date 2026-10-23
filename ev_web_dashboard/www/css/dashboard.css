@@ -199,6 +199,85 @@ body {
   border-color: #f59e0b;
 }
 
+.btn-action-tool {
+  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(14, 165, 233, 0.55);
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.btn-action-tool:hover {
+  background: rgba(14, 165, 233, 0.38);
+  border-color: #38bdf8;
+}
+
+.btn-danger-tool {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #f87171;
+  font-weight: 600;
+}
+
+.btn-danger-tool:hover {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: #ef4444;
+}
+
+/* Floating Toast Container */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  opacity: 0;
+  transform: translateY(15px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.toast.toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast.toast-success {
+  background: rgba(16, 185, 129, 0.9);
+  border-color: #10b981;
+}
+
+.toast.toast-error {
+  background: rgba(239, 68, 68, 0.9);
+  border-color: #ef4444;
+}
+
+.toast.toast-warning {
+  background: rgba(245, 158, 11, 0.9);
+  border-color: #f59e0b;
+}
+
+.toast.toast-info {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: var(--accent-sky);
+}
+
 /* ========================================================================= */
 /* MODULE 1: CAMERA & DEPTH FEEDS                                            */
 /* ========================================================================= */

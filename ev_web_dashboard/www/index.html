@@ -86,7 +86,10 @@
         <div class="module-tools">
           <button id="btn-map-follow" class="btn-tool active">Follow: ON</button>
           <button id="btn-map-center" class="btn-tool">Center</button>
-          <button id="btn-map-reset" class="btn-tool">Reset</button>
+          <button id="btn-map-reset" class="btn-tool" title="Reset Viewport Pan & Zoom">Reset View</button>
+          <button id="btn-slam-restart" class="btn-tool btn-danger-tool" title="Restart SLAM mapping from scratch">Restart SLAM</button>
+          <button id="btn-save-2d" class="btn-tool btn-action-tool" title="Save ROS 2 map (.yaml/.pgm) & download PNG">Save 2D</button>
+          <button id="btn-export-3d" class="btn-tool btn-action-tool" title="Export 3D Map mesh (.obj file)">Export 3D</button>
           <button id="btn-map-clear-3d" class="btn-tool" title="Clear Accumulated 3D Point Cloud">Clear 3D</button>
           <button id="btn-toggle-map-layout" class="btn-tool" title="Toggle 2D/3D Layout">2D / 3D</button>
         </div>
@@ -182,6 +185,9 @@
       <span>GPS Map</span>
     </button>
   </nav>
+
+  <!-- Floating Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
 
   <!-- Offline Vendor Libraries -->
   <script src="js/vendor/roslib.min.js"></script>

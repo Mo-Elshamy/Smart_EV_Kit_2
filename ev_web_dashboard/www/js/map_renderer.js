@@ -418,6 +418,63 @@ const MapRenderer = {
     if (btnClear3D) {
       btnClear3D.addEventListener('click', () => {
         this.clear3DAccumulation();
+        this.showToast('Cleared 3D Point Cloud buffer', 'info');
+      });
+    }
+
+    // Restart SLAM Mapping from scratch
+    const btnSlamRestart = document.getElementById('btn-slam-restart');
+    if (btnSlamRestart) {
+      btnSlamRestart.addEventListener('click', () => {
+        if (!confirm('Are you sure you want to restart SLAM mapping? The current map and pose graph will be cleared.')) return;
+        this.showToast('Restarting SLAM via /slam_toolbox/reset...', 'info');
+        if (window.ROSBridge && window.ROSBridge.resetSLAM) {
+          window.ROSBridge.resetSLAM((success, msg) => {
+            if (success) {
+              this.mapData = null;
+              this.robotTrail = [];
+              this.clear3DAccumulation();
+              if (this.mapMesh3D) {
+                this.scene3D.remove(this.mapMesh3D);
+                this.mapMesh3D = null;
+              }
+              if (this.mapObstacles3D) {
+                this.scene3D.remove(this.mapObstacles3D);
+                this.mapObstacles3D = null;
+              }
+              this.render2D();
+              this.showToast('✓ ' + msg, 'success');
+            } else {
+              this.showToast('Failed: ' + msg, 'error');
+            }
+          });
+        }
+      });
+    }
+
+    // Save 2D Map (.yaml + .pgm + PNG download)
+    const btnSave2D = document.getElementById('btn-save-2d');
+    if (btnSave2D) {
+      btnSave2D.addEventListener('click', () => {
+        const defaultName = 'ev_map_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const mapName = prompt('Enter map filename (will save to ~/ev_ws/maps/ and download PNG):', defaultName);
+        if (!mapName) return;
+
+        this.showToast('Saving map to Jetson disk...', 'info');
+        this.download2DMapPNG(mapName);
+        if (window.ROSBridge && window.ROSBridge.save2DMap) {
+          window.ROSBridge.save2DMap(mapName, (success, msg) => {
+            this.showToast(msg, success ? 'success' : 'error');
+          });
+        }
+      });
+    }
+
+    // Export 3D Mesh (.obj file)
+    const btnExport3D = document.getElementById('btn-export-3d');
+    if (btnExport3D) {
+      btnExport3D.addEventListener('click', () => {
+        this.export3DToOBJ();
       });
     }
 
@@ -1009,6 +1066,139 @@ const MapRenderer = {
     ctx.fillRect(-length * 0.25, width / 2 - wheelW + 3, wheelL, wheelW);
 
     ctx.restore();
+  },
+
+  // =========================================================================
+  // SLAM Map & 3D Model Export Utilities
+  // =========================================================================
+  showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('toast-show');
+    }, 10);
+    setTimeout(() => {
+      toast.classList.remove('toast-show');
+      setTimeout(() => {
+        if (toast.parentElement) toast.parentElement.removeChild(toast);
+      }, 300);
+    }, 4000);
+  },
+
+  download2DMapPNG(filename) {
+    if (!this.mapOffscreenCanvas || this.mapOffscreenCanvas.width === 0) {
+      this.showToast('No 2D occupancy grid data to export yet', 'warning');
+      return;
+    }
+    const name = (filename || 'ev_map_2d_' + Date.now()).trim();
+    this.mapOffscreenCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.showToast(`✓ Downloaded ${name}.png`, 'success');
+    });
+  },
+
+  export3DToOBJ() {
+    if (typeof THREE === 'undefined') {
+      this.showToast('Three.js not loaded', 'error');
+      return;
+    }
+
+    let objText = "# Wavefront OBJ exported from Smart EV Buggy 3D SLAM\n# Vertices and obstacle geometry\n\n";
+    let vertCount = 0;
+
+    const appendGeometry = (geom, matrix) => {
+      const posAttr = geom.getAttribute('position');
+      if (!posAttr) return;
+      const indexAttr = geom.getIndex();
+      const localVertStart = vertCount;
+
+      const v = new THREE.Vector3();
+      for (let i = 0; i < posAttr.count; i++) {
+        v.fromBufferAttribute(posAttr, i);
+        if (matrix) v.applyMatrix4(matrix);
+        objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
+        vertCount++;
+      }
+
+      if (indexAttr) {
+        for (let i = 0; i < indexAttr.count; i += 3) {
+          const a = indexAttr.getX(i) + localVertStart + 1;
+          const b = indexAttr.getX(i + 1) + localVertStart + 1;
+          const c = indexAttr.getX(i + 2) + localVertStart + 1;
+          objText += `f ${a} ${b} ${c}\n`;
+        }
+      } else {
+        for (let i = 0; i < posAttr.count; i += 3) {
+          const a = i + localVertStart + 1;
+          const b = i + 1 + localVertStart + 1;
+          const c = i + 2 + localVertStart + 1;
+          objText += `f ${a} ${b} ${c}\n`;
+        }
+      }
+    };
+
+    // 1. Export Ground Plane
+    if (this.mapMesh3D && this.mapMesh3D.geometry) {
+      objText += "g GroundPlane\n";
+      this.mapMesh3D.updateMatrixWorld(true);
+      appendGeometry(this.mapMesh3D.geometry, this.mapMesh3D.matrixWorld);
+    }
+
+    // 2. Export 3D Obstacle Columns (InstancedMesh)
+    if (this.mapObstacles3D && this.mapObstacles3D.count > 0) {
+      objText += "g Obstacles\n";
+      const boxGeom = this.mapObstacles3D.geometry;
+      const mat = new THREE.Matrix4();
+      const instCount = Math.min(this.mapObstacles3D.count, 5000);
+      for (let i = 0; i < instCount; i++) {
+        this.mapObstacles3D.getMatrixAt(i, mat);
+        appendGeometry(boxGeom, mat);
+      }
+    }
+
+    // 3. Export Accumulated LiDAR Point Cloud (as vertices)
+    if (this.lidarAccumPoints3D && this.lidarAccumPoints3D.geometry) {
+      const posAttr = this.lidarAccumPoints3D.geometry.getAttribute('position');
+      if (posAttr && posAttr.count > 0) {
+        objText += "g LidarPointCloud\n";
+        const v = new THREE.Vector3();
+        for (let i = 0; i < posAttr.count; i++) {
+          v.fromBufferAttribute(posAttr, i);
+          if (v.x !== 0 || v.y !== 0 || v.z !== 0) {
+            objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
+            vertCount++;
+          }
+        }
+      }
+    }
+
+    if (vertCount === 0) {
+      this.showToast('No 3D map objects or points available to export yet', 'warning');
+      return;
+    }
+
+    const blob = new Blob([objText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ev_map_3d_${Date.now()}.obj`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.showToast(`✓ Exported ${vertCount} vertices to 3D OBJ file`, 'success');
   }
 };
 

@@ -200,6 +200,56 @@ const ROSBridge = {
     return directions[Math.round(deg / 45) % 8];
   },
 
+  resetSLAM(callback) {
+    if (!this.ros || !this.connected) {
+      if (callback) callback(false, 'Not connected to ROS WebSocket bridge (:9090)');
+      return;
+    }
+    console.log('[ROSBridge] Calling /slam_toolbox/reset...');
+    const srv = new ROSLIB.Service({
+      ros: this.ros,
+      name: '/slam_toolbox/reset',
+      serviceType: 'slam_toolbox/srv/Reset'
+    });
+    const req = new ROSLIB.ServiceRequest({
+      pause_new_measurements: false
+    });
+    srv.callService(req, (res) => {
+      console.log('[ROSBridge] Reset SLAM response:', res);
+      if (callback) callback(true, 'SLAM mapping restarted from scratch');
+    }, (err) => {
+      console.error('[ROSBridge] Reset SLAM error:', err);
+      if (callback) callback(false, String(err || 'Failed to call /slam_toolbox/reset'));
+    });
+  },
+
+  save2DMap(mapName, callback) {
+    if (!this.ros || !this.connected) {
+      if (callback) callback(false, 'Not connected to ROS WebSocket bridge (:9090)');
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const targetName = (mapName || `ev_map_${stamp}`).trim();
+    const fullPath = `/home/qrsmartev/ev_ws/maps/${targetName}`;
+
+    console.log(`[ROSBridge] Saving map to ${fullPath}...`);
+    const srv = new ROSLIB.Service({
+      ros: this.ros,
+      name: '/slam_toolbox/save_map',
+      serviceType: 'slam_toolbox/srv/SaveMap'
+    });
+    const req = new ROSLIB.ServiceRequest({
+      name: { data: fullPath }
+    });
+    srv.callService(req, (res) => {
+      console.log('[ROSBridge] Save map response:', res);
+      if (callback) callback(true, `Saved ROS map to ${fullPath}.yaml & .pgm`);
+    }, (err) => {
+      console.error('[ROSBridge] Save map error:', err);
+      if (callback) callback(false, String(err || 'Failed to call /slam_toolbox/save_map'));
+    });
+  },
+
   on(event, callback) {
     if (this.listeners[event]) {
       this.listeners[event].push(callback);
