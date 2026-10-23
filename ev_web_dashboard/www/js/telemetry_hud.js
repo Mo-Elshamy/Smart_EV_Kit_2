@@ -111,6 +111,13 @@ const TelemetryHUD = {
       });
     }
 
+    const btnSim = document.getElementById('btn-gps-sim');
+    if (btnSim) {
+      btnSim.addEventListener('click', () => {
+        this.simulateIndoorFix();
+      });
+    }
+
     if (this.map) {
       this.map.on('dragstart', () => {
         this.followVehicle = false;
@@ -216,6 +223,24 @@ const TelemetryHUD = {
         compassDisc.style.transform = `rotate(${-yaw}deg)`;
       }
     });
+  },
+
+  simulateIndoorFix() {
+    // Generate simulated 3D lock coordinates for indoor bench testing
+    const simLat = 25.0705 + (Math.random() - 0.5) * 0.0003;
+    const simLon = 55.1403 + (Math.random() - 0.5) * 0.0003;
+    const simAlt = 15.0;
+
+    const mockMsg = {
+      status: { status: 0, service: 1 },
+      latitude: simLat,
+      longitude: simLon,
+      altitude: simAlt
+    };
+
+    if (window.ROSBridge && window.ROSBridge.notifyListeners) {
+      window.ROSBridge.notifyListeners('gps', mockMsg);
+    }
   }
 };
 
