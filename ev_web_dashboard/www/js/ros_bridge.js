@@ -75,7 +75,6 @@ const ROSBridge = {
       ros: this.ros,
       name: '/map',
       messageType: 'nav_msgs/OccupancyGrid',
-      compression: 'png',
       throttle_rate: 1000
     });
     mapTopic.subscribe((message) => {
