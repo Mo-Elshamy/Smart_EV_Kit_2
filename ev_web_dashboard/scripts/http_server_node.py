@@ -21,12 +21,24 @@ class EvDashboardRequestHandler(SimpleHTTPRequestHandler):
 
 class HttpServerNode(Node):
     def __init__(self):
-        super().__init__('ev_web_dashboard_server')
-        self.declare_parameter('port', 3000)
-        self.declare_parameter('host', '0.0.0.0')
+        super().__init__(
+            'ev_web_dashboard_server',
+            allow_undeclared_parameters=True,
+            automatically_declare_parameters_from_overrides=True
+        )
 
-        port = self.get_parameter('port').get_parameter_value().integer_value
-        host = self.get_parameter('host').get_parameter_value().string_value
+        if not self.has_parameter('port'):
+            self.declare_parameter('port', 3000)
+        if not self.has_parameter('host'):
+            self.declare_parameter('host', '0.0.0.0')
+
+        port_val = self.get_parameter('port').value
+        try:
+            port = int(port_val)
+        except (ValueError, TypeError):
+            port = 3000
+
+        host = str(self.get_parameter('host').value or '0.0.0.0')
 
         # Locate www directory (check installed share first, then source directory)
         try:
@@ -46,6 +58,7 @@ class HttpServerNode(Node):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, directory=www_dir, **kwargs)
 
+        ThreadingHTTPServer.allow_reuse_address = True
         self.server = ThreadingHTTPServer((host, port), BoundHandler)
         self.server_thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.server_thread.start()
