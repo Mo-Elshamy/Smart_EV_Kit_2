@@ -125,3 +125,4 @@ def generate_launch_description():
         slam_stack_launch,
         rviz_node
     ])
+

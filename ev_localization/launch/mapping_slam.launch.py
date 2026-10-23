@@ -13,7 +13,7 @@ def generate_launch_description():
     pkg_slam_toolbox = get_package_share_directory('slam_toolbox')
 
     default_slam_params = os.path.join(pkg_ev_localization, 'config', 'slam_toolbox_params.yaml')
-    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'rviz_config.rviz')
+    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'full_system_rviz.rviz')
     lidar_launch_file = os.path.join(pkg_ev_bringup, 'launch', 'lidar.launch.py')
     localization_launch_file = os.path.join(pkg_ev_localization, 'launch', 'localization.launch.py')
     slam_launch_file = os.path.join(pkg_slam_toolbox, 'launch', 'online_async_launch.py')

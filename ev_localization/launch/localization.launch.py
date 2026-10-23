@@ -14,7 +14,7 @@ def generate_launch_description():
     pkg_ev_localization = get_package_share_directory('ev_localization')
 
     default_xacro_path = os.path.join(pkg_ev_description, 'urdf', 'ev_buggy.urdf.xacro')
-    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'rviz_config.rviz')
+    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'full_system_rviz.rviz')
     ekf_config_path = os.path.join(pkg_ev_localization, 'config', 'ekf_fusion_params.yaml')
 
     gps_launch_file = os.path.join(pkg_ev_bringup, 'launch', 'gps.launch.py')

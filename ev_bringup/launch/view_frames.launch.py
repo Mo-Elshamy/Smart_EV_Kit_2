@@ -12,7 +12,7 @@ def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
 
     default_xacro_path = os.path.join(pkg_ev_description, 'urdf', 'ev_buggy.urdf.xacro')
-    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'rviz_config.rviz')
+    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'full_system_rviz.rviz')
 
     use_rviz_arg = DeclareLaunchArgument(
         'use_rviz',

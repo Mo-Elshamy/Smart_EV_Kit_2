@@ -9,10 +9,11 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
     pkg_ev_localization = get_package_share_directory('ev_localization')
+    pkg_ev_web_dashboard = get_package_share_directory('ev_web_dashboard')
 
     slam_launch_file = os.path.join(pkg_ev_localization, 'launch', 'mapping_slam.launch.py')
-    bridge_launch_file = os.path.join(pkg_ev_bringup, 'launch', 'telemetry_bridge.launch.py')
-    web_launch_file = os.path.join(pkg_ev_bringup, 'launch', 'web_dashboard.launch.py')
+    bridge_launch_file = os.path.join(pkg_ev_bringup, 'launch', 'web_video.launch.py')
+    web_launch_file = os.path.join(pkg_ev_web_dashboard, 'launch', 'web_dashboard.launch.py')
 
     # Top-Level Configuration Arguments
     enable_slam_arg = DeclareLaunchArgument(

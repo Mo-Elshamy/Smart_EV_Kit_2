@@ -139,3 +139,4 @@ def generate_launch_description():
         gps_launch,
         camera_launch
     ])
+

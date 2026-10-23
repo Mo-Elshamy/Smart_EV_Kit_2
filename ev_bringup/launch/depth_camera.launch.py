@@ -14,7 +14,7 @@ def generate_launch_description():
     pkg_zed_wrapper = get_package_share_directory('zed_wrapper')
 
     default_xacro_path = os.path.join(pkg_ev_description, 'urdf', 'ev_buggy.urdf.xacro')
-    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'rviz_config.rviz')
+    default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'full_system_rviz.rviz')
     zed_params_file = os.path.join(pkg_ev_bringup, 'config', 'zed2i_params.yaml')
     zed_launch_file = os.path.join(pkg_zed_wrapper, 'launch', 'zed_camera.launch.py')
 

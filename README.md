@@ -270,7 +270,7 @@ ros2 launch ev_bringup lidar.launch.py serial_port:=/dev/ttyUSB1
 
 **Run LiDAR + Vehicle Kinematics + RViz:**
 ```bash
-ros2 launch ev_bringup lidar_and_description.launch.py serial_port:=/dev/ttyUSB1
+ros2 launch ev_bringup lidar.launch.py serial_port:=/dev/ttyUSB1 use_rviz:=true
 ```
 
 **Verify scan data:**
@@ -309,7 +309,7 @@ ros2 topic echo /imu/data --once
 ### 5. Combined Telemetry Bringup (GPS + IMU)
 When testing both GPS and IMU together:
 ```bash
-ros2 launch ev_bringup telemetry_sensors.launch.py gps_port:=/dev/ttyUSB0 imu_port:=/dev/ttyIMU imu_baud:=9600
+ros2 launch ev_bringup sensors_all.launch.py gps_port:=/dev/ttyUSB0 imu_port:=/dev/ttyIMU imu_baud:=9600 use_lidar:=false use_zed:=false
 ```
 *(If the IMU is disconnected, simply pass `use_imu:=false`)*.
 
