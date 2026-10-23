@@ -7,8 +7,8 @@ ekf_filter_node:
     frequency: 30.0
     sensor_timeout: 0.1
     two_d_mode: true
-    transform_time_offset: 0.0
-    transform_timeout: 0.0
+    transform_time_offset: 0.05
+    transform_timeout: 0.1
     print_diagnostics: true
     debug: false
 

@@ -3,7 +3,7 @@ set -e
 
 echo "=== Holybro M9N GNSS (FTDI 0403:6015) Udev Setup ==="
 
-echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", MODE:="0777", SYMLINK+="ttyGPS"' | sudo tee /etc/udev/rules.d/99-holybro.rules > /dev/null
+echo 'KERNEL=="ttyUSB*|ttyACM*", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", MODE:="0777", SYMLINK+="ttyGPS", ENV{ID_MM_DEVICE_IGNORE}="1"' | sudo tee /etc/udev/rules.d/99-holybro.rules > /dev/null
 
 sudo udevadm control --reload-rules
 sudo udevadm trigger

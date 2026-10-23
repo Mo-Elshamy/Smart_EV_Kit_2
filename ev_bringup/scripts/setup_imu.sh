@@ -25,7 +25,7 @@ echo "[3/4] Loading ch341 module into running kernel..."
 sudo modprobe ch341
 
 echo "[4/4] Creating persistent udev rule for /dev/ttyIMU (1a86:7523)..."
-echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE:="0777", SYMLINK+="ttyIMU"' | sudo tee /etc/udev/rules.d/99-witmotion.rules > /dev/null
+echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", MODE:="0777", SYMLINK+="ttyIMU", ENV{ID_MM_DEVICE_IGNORE}="1"' | sudo tee /etc/udev/rules.d/99-witmotion.rules > /dev/null
 
 sudo udevadm control --reload-rules
 sudo udevadm trigger

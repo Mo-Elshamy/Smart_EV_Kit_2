@@ -79,3 +79,4 @@ def find_gps_port(fallback='/dev/ttyGPS'):
         return ttys[2]
 
     return fallback
+

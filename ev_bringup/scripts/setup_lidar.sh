@@ -3,7 +3,7 @@ set -e
 
 echo "=== Slamtec RPLIDAR S3 (CP2102 10c4:ea60) Udev Setup ==="
 
-echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE:="0777", SYMLINK+="rplidar", SYMLINK+="ttyLIDAR"' | sudo tee /etc/udev/rules.d/99-rplidar.rules > /dev/null
+echo 'KERNEL=="ttyUSB*", ATTRS{idVendor}=="10c4", ATTRS{idProduct}=="ea60", MODE:="0777", SYMLINK+="rplidar", SYMLINK+="ttyLIDAR", ENV{ID_MM_DEVICE_IGNORE}="1"' | sudo tee /etc/udev/rules.d/99-rplidar.rules > /dev/null
 
 sudo udevadm control --reload-rules
 sudo udevadm trigger
