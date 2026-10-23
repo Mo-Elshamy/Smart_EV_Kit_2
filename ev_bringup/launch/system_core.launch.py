@@ -1,10 +1,15 @@
 import os
+import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+
+# Import auto port detection
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+from port_utils import find_lidar_port, find_imu_port, find_gps_port
 
 def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
@@ -45,8 +50,8 @@ def generate_launch_description():
     )
     lidar_port_arg = DeclareLaunchArgument(
         'lidar_port',
-        default_value='/dev/ttyLIDAR',
-        description='Serial port for RPLIDAR S3'
+        default_value=find_lidar_port(),
+        description='Serial port for RPLIDAR S3 (auto-detected if omitted)'
     )
     use_zed_arg = DeclareLaunchArgument(
         'use_zed',
@@ -60,8 +65,8 @@ def generate_launch_description():
     )
     imu_port_arg = DeclareLaunchArgument(
         'imu_port',
-        default_value='/dev/ttyIMU',
-        description='Serial port for WT901 IMU'
+        default_value=find_imu_port(),
+        description='Serial port for WT901 IMU (auto-detected if omitted)'
     )
     imu_baud_arg = DeclareLaunchArgument(
         'imu_baud',
@@ -75,8 +80,8 @@ def generate_launch_description():
     )
     gps_port_arg = DeclareLaunchArgument(
         'gps_port',
-        default_value='/dev/ttyGPS',
-        description='Serial port for GNSS receiver (/dev/ttyGPS, /dev/ttyUSB*, /dev/ttyACM*)'
+        default_value=find_gps_port(),
+        description='Serial port for GNSS receiver (auto-detected if omitted)'
     )
     gps_baud_arg = DeclareLaunchArgument(
         'gps_baud',

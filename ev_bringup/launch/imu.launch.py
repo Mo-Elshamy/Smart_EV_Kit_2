@@ -1,4 +1,5 @@
 import os
+import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -6,14 +7,18 @@ from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+# Import auto port detection
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+from port_utils import find_imu_port
+
 def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
     default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'rviz_imu.rviz')
 
     port_arg = DeclareLaunchArgument(
         'port',
-        default_value='/dev/ttyIMU',
-        description='Serial port for WT901 IMU (e.g. /dev/ttyIMU or /dev/ttyUSB0)'
+        default_value=find_imu_port(),
+        description='Serial port for WT901 IMU (auto-detected if omitted)'
     )
     baud_arg = DeclareLaunchArgument(
         'baud',

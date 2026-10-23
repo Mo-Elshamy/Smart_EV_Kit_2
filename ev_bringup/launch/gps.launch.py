@@ -1,13 +1,19 @@
+import os
+import sys
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+# Import auto port detection
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+from port_utils import find_gps_port
+
 def generate_launch_description():
     port_arg = DeclareLaunchArgument(
         'port',
-        default_value='/dev/ttyGPS',
-        description='Serial port for Holybro M9N GNSS (e.g. /dev/ttyGPS or /dev/ttyACM0)'
+        default_value=find_gps_port(),
+        description='Serial port for Holybro M9N GNSS (auto-detected if omitted)'
     )
     baud_arg = DeclareLaunchArgument(
         'baud',

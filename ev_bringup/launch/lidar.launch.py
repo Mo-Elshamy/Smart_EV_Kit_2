@@ -1,4 +1,5 @@
 import os
+import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
@@ -6,14 +7,18 @@ from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
+# Import auto port detection
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+from port_utils import find_lidar_port
+
 def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
     default_filter_config = os.path.join(pkg_ev_bringup, 'config', 'laser_filter_params.yaml')
 
     serial_port_arg = DeclareLaunchArgument(
         'serial_port',
-        default_value='/dev/ttyLIDAR',
-        description='Serial port for Slamtec RPLIDAR S3 (e.g. /dev/ttyLIDAR or /dev/ttyUSB0)'
+        default_value=find_lidar_port(),
+        description='Serial port for Slamtec RPLIDAR S3 (auto-detected if omitted)'
     )
     serial_baudrate_arg = DeclareLaunchArgument(
         'serial_baudrate',

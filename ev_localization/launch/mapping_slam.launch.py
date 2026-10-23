@@ -1,4 +1,5 @@
 import os
+import sys
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
@@ -11,6 +12,10 @@ def generate_launch_description():
     pkg_ev_bringup = get_package_share_directory('ev_bringup')
     pkg_ev_localization = get_package_share_directory('ev_localization')
     pkg_slam_toolbox = get_package_share_directory('slam_toolbox')
+
+    # Import auto port detection from ev_bringup
+    sys.path.insert(0, os.path.join(pkg_ev_bringup, 'launch'))
+    from port_utils import find_lidar_port, find_imu_port, find_gps_port
 
     default_slam_params = os.path.join(pkg_ev_localization, 'config', 'slam_toolbox_params.yaml')
     default_rviz_config = os.path.join(pkg_ev_bringup, 'config', 'full_system_rviz.rviz')
@@ -31,8 +36,8 @@ def generate_launch_description():
     )
     lidar_port_arg = DeclareLaunchArgument(
         'lidar_port',
-        default_value='/dev/ttyLIDAR',
-        description='Serial port for RPLIDAR S3 (/dev/ttyLIDAR or /dev/ttyUSB0)'
+        default_value=find_lidar_port(),
+        description='Serial port for RPLIDAR S3 (auto-detected if omitted)'
     )
     lidar_baud_arg = DeclareLaunchArgument(
         'lidar_baud',
@@ -51,8 +56,8 @@ def generate_launch_description():
     )
     imu_port_arg = DeclareLaunchArgument(
         'imu_port',
-        default_value='/dev/ttyIMU',
-        description='Serial port for WT901 IMU'
+        default_value=find_imu_port(),
+        description='Serial port for WT901 IMU (auto-detected if omitted)'
     )
     imu_baud_arg = DeclareLaunchArgument(
         'imu_baud',
@@ -66,8 +71,8 @@ def generate_launch_description():
     )
     gps_port_arg = DeclareLaunchArgument(
         'gps_port',
-        default_value='/dev/ttyGPS',
-        description='Serial port for GNSS receiver (/dev/ttyGPS, /dev/ttyUSB*, /dev/ttyACM*)'
+        default_value=find_gps_port(),
+        description='Serial port for GNSS receiver (auto-detected if omitted)'
     )
     gps_baud_arg = DeclareLaunchArgument(
         'gps_baud',
