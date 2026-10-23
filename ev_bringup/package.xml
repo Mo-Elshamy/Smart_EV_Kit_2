@@ -21,7 +21,6 @@
   <exec_depend>robot_localization</exec_depend>
   <exec_depend>rosbridge_server</exec_depend>
   <exec_depend>web_video_server</exec_depend>
-  <exec_depend>ev_localization</exec_depend>
   <exec_depend>ev_web_dashboard</exec_depend>
 
   <export>
