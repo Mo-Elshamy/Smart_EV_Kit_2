@@ -9,6 +9,7 @@ const TelemetryHUD = {
   trailPolyline: null,
   gpsTrail: [],
   hasGpsFix: false,
+  firstFixOccurred: false,
   followVehicle: true,
   lastLat: 0,
   lastLon: 0,
@@ -35,12 +36,32 @@ const TelemetryHUD = {
       attributionControl: false
     });
 
-    // Dark-mode themed CartoDB / OSM tiles with offline fallback
-    const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    // 1. Dark Mode Basemap (CartoDB Dark Matter)
+    const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd'
     });
-    tileLayer.addTo(this.map);
+
+    // 2. High-Resolution Satellite Aerial Basemap (Esri World Imagery)
+    const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19
+    });
+
+    // 3. OpenStreetMap Streets Basemap
+    const streetTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    });
+
+    // Add default dark tiles
+    darkTiles.addTo(this.map);
+
+    // Layer switcher control
+    const baseLayers = {
+      "🌙 Dark Mode": darkTiles,
+      "🛰️ Satellite": satelliteTiles,
+      "🗺️ Streets": streetTiles
+    };
+    L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
 
     // Breadcrumb trail polyline
     this.trailPolyline = L.polyline([], {
@@ -126,7 +147,12 @@ const TelemetryHUD = {
       }
 
       if (this.followVehicle && this.map) {
-        this.map.setView([lat, lon], this.map.getZoom(), { animate: true });
+        if (!this.firstFixOccurred && this.hasGpsFix) {
+          this.firstFixOccurred = true;
+          this.map.setView([lat, lon], 18, { animate: true });
+        } else {
+          this.map.setView([lat, lon], this.map.getZoom(), { animate: true });
+        }
       }
 
       // Update GPS HUD Overlay

@@ -64,6 +64,16 @@ def generate_launch_description():
         default_value='false',
         description='Launch Holybro M9N GNSS (disabled indoors / desk testing)'
     )
+    gps_port_arg = DeclareLaunchArgument(
+        'gps_port',
+        default_value='/dev/ttyGPS',
+        description='Serial port for GNSS receiver (/dev/ttyGPS, /dev/ttyUSB*, /dev/ttyACM*)'
+    )
+    gps_baud_arg = DeclareLaunchArgument(
+        'gps_baud',
+        default_value='115200',
+        description='Baud rate for GNSS receiver (115200 standard)'
+    )
     use_gps_odom_arg = DeclareLaunchArgument(
         'use_gps_odom',
         default_value='false',
@@ -96,6 +106,8 @@ def generate_launch_description():
             'imu_port': LaunchConfiguration('imu_port'),
             'imu_baud': LaunchConfiguration('imu_baud'),
             'use_gps': LaunchConfiguration('use_gps'),
+            'gps_port': LaunchConfiguration('gps_port'),
+            'gps_baud': LaunchConfiguration('gps_baud'),
             'use_gps_odom': LaunchConfiguration('use_gps_odom'),
             'use_rviz': 'false'
         }.items()
@@ -131,6 +143,8 @@ def generate_launch_description():
         imu_port_arg,
         imu_baud_arg,
         use_gps_arg,
+        gps_port_arg,
+        gps_baud_arg,
         use_gps_odom_arg,
         slam_params_file_arg,
         lidar_launch,
