@@ -151,10 +151,13 @@
           <!-- GPS Coordinates Readout -->
           <div class="hud-widget gps-info-strip">
             <span class="hud-widget-title">GNSS Readout</span>
-            <div><span>Status: </span><strong id="hud-gps-status" class="badge-fix-none">NO FIX</strong></div>
+            <div><span>Status: </span><strong id="hud-gps-status" class="badge-fix-none">NO FIX (INDOORS)</strong></div>
+            <div><span>Stream: </span><strong id="hud-gps-stream" style="color:#94a3b8;">Waiting for data...</strong></div>
+            <div><span>Packets: </span><strong id="hud-gps-packets" style="color:#38bdf8;">0 received</strong></div>
             <div><span>Lat: </span><strong id="hud-gps-lat">0.000000°</strong></div>
             <div><span>Lon: </span><strong id="hud-gps-lon">0.000000°</strong></div>
             <div><span>Alt: </span><strong id="hud-gps-alt">0.0 m</strong></div>
+            <div id="hud-gps-note" style="margin-top:6px; font-size:0.72rem; color:#f59e0b; line-height:1.3;">Indoors: Click "Simulate Fix" above to test real-world map & heading tracking.</div>
           </div>
         </div>
       </div>

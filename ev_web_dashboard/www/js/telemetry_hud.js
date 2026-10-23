@@ -132,6 +132,7 @@ const TelemetryHUD = {
     window.ROSBridge.on('gps', (msg) => {
       if (!msg) return;
 
+      this.packetCount = (this.packetCount || 0) + 1;
       const status = msg.status ? msg.status.status : -1;
       const lat = typeof msg.latitude === 'number' ? msg.latitude : parseFloat(msg.latitude);
       const lon = typeof msg.longitude === 'number' ? msg.longitude : parseFloat(msg.longitude);
@@ -144,9 +145,20 @@ const TelemetryHUD = {
       const lonEl = document.getElementById('hud-gps-lon');
       const altEl = document.getElementById('hud-gps-alt');
       const fixEl = document.getElementById('hud-gps-status');
+      const streamEl = document.getElementById('hud-gps-stream');
+      const packetsEl = document.getElementById('hud-gps-packets');
+      const noteEl = document.getElementById('hud-gps-note');
+
+      if (streamEl) {
+        streamEl.textContent = '🟢 Active Stream';
+        streamEl.style.color = '#10b981';
+      }
+      if (packetsEl) {
+        packetsEl.textContent = `${this.packetCount} pkts received`;
+      }
 
       if (fixEl) {
-        fixEl.textContent = this.hasGpsFix ? (status === 0 ? '3D FIX' : 'RTK FIX') : 'NO FIX';
+        fixEl.textContent = this.hasGpsFix ? (status === 0 ? '3D FIX (OUTDOORS)' : 'RTK FIX') : 'NO FIX (INDOORS)';
         fixEl.className = this.hasGpsFix ? 'badge-fix-ok' : 'badge-fix-none';
       }
 
@@ -157,6 +169,7 @@ const TelemetryHUD = {
         if (latEl) latEl.textContent = lat.toFixed(6) + '°';
         if (lonEl) lonEl.textContent = lon.toFixed(6) + '°';
         if (altEl && isFinite(alt)) altEl.textContent = alt.toFixed(1) + ' m';
+        if (noteEl) noteEl.style.display = 'none';
 
         // Update Leaflet marker safely
         if (this.vehicleMarker) {
@@ -181,9 +194,10 @@ const TelemetryHUD = {
           }
         }
       } else {
-        if (latEl) latEl.textContent = '--.------°';
-        if (lonEl) lonEl.textContent = '--.------°';
+        if (latEl) latEl.textContent = 'Searching... (NaN)';
+        if (lonEl) lonEl.textContent = 'Searching... (NaN)';
         if (altEl) altEl.textContent = '--.- m';
+        if (noteEl) noteEl.style.display = 'block';
       }
     });
 
@@ -225,11 +239,20 @@ const TelemetryHUD = {
     });
   },
 
+  simBaseLat: 25.0705,
+  simBaseLon: 55.1403,
+  simStep: 0,
+
   simulateIndoorFix() {
-    // Generate simulated 3D lock coordinates for indoor bench testing
-    const simLat = 25.0705 + (Math.random() - 0.5) * 0.0003;
-    const simLon = 55.1403 + (Math.random() - 0.5) * 0.0003;
-    const simAlt = 15.0;
+    this.simStep++;
+    // Advance coordinates along a smooth circular path for visual testing
+    const angle = this.simStep * 0.35;
+    const offsetLat = Math.sin(angle) * 0.0005;
+    const offsetLon = Math.cos(angle) * 0.0005;
+
+    const simLat = this.simBaseLat + offsetLat;
+    const simLon = this.simBaseLon + offsetLon;
+    const simAlt = 16.5;
 
     const mockMsg = {
       status: { status: 0, service: 1 },
@@ -240,6 +263,10 @@ const TelemetryHUD = {
 
     if (window.ROSBridge && window.ROSBridge.notifyListeners) {
       window.ROSBridge.notifyListeners('gps', mockMsg);
+    }
+
+    if (this.map) {
+      this.map.setView([simLat, simLon], 18, { animate: true });
     }
   }
 };

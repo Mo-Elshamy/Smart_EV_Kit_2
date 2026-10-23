@@ -122,22 +122,11 @@ const ROSBridge = {
       ros: this.ros,
       name: '/fix',
       messageType: 'sensor_msgs/NavSatFix',
-      throttle_rate: 500
+      throttle_rate: 200
     });
     gpsTopic.subscribe((message) => {
       this.updateTelemetryGps(message);
       this.notifyListeners('gps', message);
-    });
-
-    // 6. ZED 2i Stereo 3D Point Cloud (/zed/zed_node/point_cloud/cloud_registered)
-    const pcTopic = new ROSLIB.Topic({
-      ros: this.ros,
-      name: '/zed/zed_node/point_cloud/cloud_registered',
-      messageType: 'sensor_msgs/PointCloud2',
-      throttle_rate: 1000
-    });
-    pcTopic.subscribe((message) => {
-      this.notifyListeners('pointcloud', message);
     });
   },
 
@@ -182,33 +171,27 @@ const ROSBridge = {
     }
   },
 
+  gpsPacketCount: 0,
+
   updateTelemetryGps(msg) {
+    this.gpsPacketCount++;
     const statusEl = document.getElementById('stat-gps-status');
-    const coordsEl = document.getElementById('stat-gps-coords');
 
     const status = msg.status ? msg.status.status : -1;
     const lat = typeof msg.latitude === 'number' ? msg.latitude : parseFloat(msg.latitude);
     const lon = typeof msg.longitude === 'number' ? msg.longitude : parseFloat(msg.longitude);
     const isCoordsValid = isFinite(lat) && isFinite(lon) && !isNaN(lat) && !isNaN(lon) && (lat !== 0 || lon !== 0);
 
-    let statusText = 'NO FIX';
-    let statusClass = 'pill-danger';
+    let statusText = 'GPS: STREAMING (NO FIX)';
+    let statusClass = 'pill-warning';
     if (status >= 0 && isCoordsValid) {
-      statusText = status === 0 ? '3D FIX' : 'RTK/DGPS';
+      statusText = status === 0 ? 'GPS: 3D FIX' : 'GPS: RTK FIX';
       statusClass = 'pill-success';
     }
 
     if (statusEl) {
       statusEl.textContent = statusText;
       statusEl.className = `status-pill ${statusClass}`;
-    }
-
-    if (coordsEl) {
-      if (isCoordsValid) {
-        coordsEl.textContent = `${lat.toFixed(6)}°, ${lon.toFixed(6)}°`;
-      } else {
-        coordsEl.textContent = 'Searching satellites...';
-      }
     }
   },
 
