@@ -13,7 +13,8 @@ const ROSBridge = {
     scan: [],
     odom: [],
     imu: [],
-    gps: []
+    gps: [],
+    pointcloud: []
   },
 
   init() {
@@ -126,6 +127,17 @@ const ROSBridge = {
     gpsTopic.subscribe((message) => {
       this.updateTelemetryGps(message);
       this.notifyListeners('gps', message);
+    });
+
+    // 6. ZED 2i Stereo 3D Point Cloud (/zed/zed_node/point_cloud/cloud_registered)
+    const pcTopic = new ROSLIB.Topic({
+      ros: this.ros,
+      name: '/zed/zed_node/point_cloud/cloud_registered',
+      messageType: 'sensor_msgs/PointCloud2',
+      throttle_rate: 1000
+    });
+    pcTopic.subscribe((message) => {
+      this.notifyListeners('pointcloud', message);
     });
   },
 
