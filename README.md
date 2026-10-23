@@ -435,7 +435,12 @@ Stage 7 introduces a zero-install, browser-based **Web Command Center** (`ev_web
   - **Single-Screen Command Center:** Zero-scroll 3-column layout displaying all 3 modules simultaneously.
   - **Top Status Bar:** Real-time ROS 2 connection state, vehicle forward speed (m/s & km/h), IMU yaw heading, and GNSS fix status.
   - **Module 1 (Camera & Depth):** Side-by-side or stacked RGB camera feed + CUDA depth feed at 15 FPS.
-  - **Module 2 (2D SLAM & 3D Mapping):** Interactive 2D occupancy grid canvas (`/map` + `/scan_filtered` + robot pose arrow) alongside a Three.js WebGL 3D spatial view with touch/mouse orbit controls. Includes **Follow**, **Center**, **Reset Zoom**, and layout toggle buttons.
+  - **Module 2 (2D SLAM & 3D Point Cloud Mapping):** Interactive 2D occupancy grid canvas (`/map` + `/scan_filtered` + robot pose arrow) alongside a Three.js WebGL 3D spatial viewport with touch/mouse orbit controls (REP-103 Z-up orientation). Features:
+    - **3D Textured Occupancy Grid Floor:** Projects the live SLAM map onto a 3D floor plane in real world coordinates.
+    - **3D Elevated Obstacle Wall Columns:** Transforms 2D SLAM obstacle cells into 3D holographic wall columns with height-based cyberpunk gradients.
+    - **Persistent 3D LiDAR Point Cloud Mapping:** Accumulates laser scan sweeps in world coordinates as the buggy moves, creating an evolving 3D point cloud map.
+    - **Stereolabs ZED 2i Registered 3D Depth Cloud:** Decodes and transforms `/zed/zed_node/point_cloud/cloud_registered` into world coordinates with RGB and depth colormaps.
+    - Includes **Follow**, **Center**, **Reset**, **Clear 3D**, and **2D / 3D Layout Toggle** buttons.
   - **Module 3 (GPS Map & HUD):** Interactive Leaflet GPS map with vehicle heading cone, breadcrumb trail, artificial horizon (pitch/roll), 360° compass rose, and coordinate readouts.
 - **Mobile / Tablet Layout ($< 1024\text{px}$):**
   - **Full-Screen Single Module Viewport:** Automatically adapts for one-handed operation.
