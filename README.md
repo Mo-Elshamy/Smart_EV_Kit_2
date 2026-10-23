@@ -17,6 +17,8 @@ Upgraded Smart EV sensor rig with kinematics, transform pipelines, hardware driv
   - [5. Combined Telemetry Bringup (GPS + IMU)](#5-combined-telemetry-bringup-gps--imu)
   - [6. Stereo Depth Camera Testing (Stereolabs ZED 2i)](#6-stereo-depth-camera-testing-stereolabs-zed-2i)
   - [7. Multi-Sensor Localization & EKF Fusion (Stage 5)](#7-multi-sensor-localization--ekf-fusion-stage-5)
+  - [8. 2D Online SLAM Mapping (Stage 6)](#8-2d-online-slam-mapping-stage-6)
+  - [9. Telemetry Bridges, Web Command Center, & Master Launch (Stage 7)](#9-telemetry-bridges-web-command-center--master-launch-stage-7)
 - [Udev Rules (Persistent Device Names)](#udev-rules-persistent-device-names)
 
 ---
@@ -38,7 +40,10 @@ src/Smart_EV_Kit_2/
 │   │   ├── telemetry_sensors.launch.py      # Composite GPS + IMU + TF bringup
 │   │   ├── lidar.launch.py                  # Standalone RPLIDAR S3 + filter
 │   │   ├── lidar_and_description.launch.py  # LiDAR + Roll-cage filter + Vehicle TF + RViz
-│   │   └── depth_camera.launch.py           # ZED 2i Stereo Depth + RGB + PointCloud + RViz
+│   │   ├── depth_camera.launch.py           # ZED 2i Stereo Depth + RGB + PointCloud + RViz
+│   │   ├── telemetry_bridge.launch.py       # Stage 7: rosbridge (:9090) + web_video_server (:8080)
+│   │   ├── web_dashboard.launch.py          # Stage 7: HTTP static server (:3000)
+│   │   └── system_core.launch.py            # Stage 7: Master unified bringup (All sensors + SLAM + Web)
 │   ├── config/
 │   │   ├── rviz_config.rviz                 # RViz profile with PointCloud, Scans, and Video
 │   │   ├── rviz_imu.rviz                    # Dedicated 3D orientation visualizer profile
@@ -50,11 +55,31 @@ src/Smart_EV_Kit_2/
 │   │   ├── setup_gps.sh                     # Persistent FTDI udev rule installer for Holybro M9N
 │   │   └── setup_lidar.sh                   # Persistent CP2102 udev rule installer for Slamtec S3
 │   └── CMakeLists.txt, package.xml
-├── ev_localization/            # Stage 5: Sensor fusion & EKF state estimation
+├── ev_localization/            # Sensor fusion & SLAM state estimation (Stages 5 & 6)
 │   ├── launch/
-│   │   └── localization.launch.py       # Full pipeline: EKF + NavSat + State Publisher + RViz
+│   │   ├── localization.launch.py       # Stage 5: EKF + NavSat + State Publisher + RViz
+│   │   └── mapping_slam.launch.py       # Stage 6: Online async SLAM Toolbox + EKF + Scan
 │   ├── config/
-│   │   └── ekf_fusion_params.yaml       # robot_localization EKF (ZED + IMU + GPS) config
+│   │   ├── ekf_fusion_params.yaml       # robot_localization EKF (ZED + IMU + GPS) config
+│   │   └── slam_toolbox_params.yaml     # slam_toolbox 2D mapping parameters
+│   └── CMakeLists.txt, package.xml
+├── ev_web_dashboard/           # Stage 7: Zero-install Web Command Center
+│   ├── launch/
+│   │   └── web_dashboard.launch.py      # Standalone HTTP web server launcher
+│   ├── scripts/
+│   │   └── http_server_node.py          # Python multithreaded HTTP server (:3000)
+│   ├── www/                             # Responsive web frontend (Zero CDN dependencies)
+│   │   ├── index.html                   # Command center layout (Desktop 3-column / Mobile 3-tab)
+│   │   ├── css/
+│   │   │   ├── dashboard.css            # Glassmorphic dark styling & responsive grid
+│   │   │   └── vendor/leaflet.css       # Bundled Leaflet styles
+│   │   ├── js/
+│   │   │   ├── app.js                   # Master dashboard logic & MJPEG stream binder
+│   │   │   ├── ros_bridge.js            # Dynamic host roslibjs WebSocket connector (:9090)
+│   │   │   ├── map_renderer.js          # 2D Canvas SLAM & Three.js 3D spatial visualizer
+│   │   │   ├── telemetry_hud.js         # Leaflet GPS map, trail, heading & artificial horizon
+│   │   │   └── vendor/                  # Bundled roslib.min.js, three.min.js, leaflet.js
+│   │   └── assets/                      # Icons and static web assets
 │   └── CMakeLists.txt, package.xml
 └── ev_sensors/                 # Hardware driver implementations
     ├── sllidar_ros2/           # Slamtec RPLIDAR C++ driver (S3 / A-series / C-series)
@@ -90,6 +115,8 @@ sudo apt install -y \
   ros-$ROS_DISTRO-nmea-navsat-driver \
   ros-$ROS_DISTRO-laser-filters \
   ros-$ROS_DISTRO-zed-description \
+  ros-$ROS_DISTRO-rosbridge-server \
+  ros-$ROS_DISTRO-web-video-server \
   cuda-toolkit-13-2 \
   libusb-1.0-0-dev \
   zstd
@@ -387,6 +414,66 @@ ros2 run tf2_ros tf2_echo map base_link
 # 4. Save the built map:
 ros2 run nav2_map_server map_saver_cli -f ~/my_ev_map
 ```
+
+---
+
+### 9. Telemetry Bridges, Web Command Center, & Master Launch (Stage 7)
+
+Stage 7 introduces a zero-install, browser-based **Web Command Center** (`ev_web_dashboard`) and high-performance WebSocket/MJPEG telemetry bridges. This allows engineers and operators to monitor vehicle health, video feeds, 2D SLAM maps, 3D point clouds, and GPS position from any laptop, tablet, or smartphone connected to the vehicle's Wi-Fi network.
+
+#### A. Network & Port Architecture
+| Service | Port | Protocol | Description |
+| :--- | :--- | :--- | :--- |
+| **Web Command Center** | **`3000`** | HTTP | Zero-dependency static server serving the responsive dashboard UI |
+| **ROS 2 Telemetry Bridge** | **`9090`** | WebSocket (ws://) | `rosbridge_websocket` streaming topics (`/map`, `/scan_filtered`, `/odometry/filtered`, `/imu/data`, `/fix`) |
+| **Live Video Server** | **`8080`** | HTTP MJPEG | `web_video_server` streaming RGB camera & CUDA depth maps |
+
+> **Dynamic Host Binding:** The dashboard automatically connects WebSocket and MJPEG streams to `window.location.hostname`. Accessing `http://192.168.1.100:3000` automatically routes data to `ws://192.168.1.100:9090` and `http://192.168.1.100:8080` without hardcoded IP configurations.
+
+#### B. Dashboard Modules & Responsive Layouts
+- **Laptop / Desktop Layout ($\ge 1024\text{px}$):**
+  - **Single-Screen Command Center:** Zero-scroll 3-column layout displaying all 3 modules simultaneously.
+  - **Top Status Bar:** Real-time ROS 2 connection state, vehicle forward speed (m/s & km/h), IMU yaw heading, and GNSS fix status.
+  - **Module 1 (Camera & Depth):** Side-by-side or stacked RGB camera feed + CUDA depth feed at 15 FPS.
+  - **Module 2 (2D SLAM & 3D Mapping):** Interactive 2D occupancy grid canvas (`/map` + `/scan_filtered` + robot pose arrow) alongside a Three.js WebGL 3D spatial view with touch/mouse orbit controls. Includes **Follow**, **Center**, **Reset Zoom**, and layout toggle buttons.
+  - **Module 3 (GPS Map & HUD):** Interactive Leaflet GPS map with vehicle heading cone, breadcrumb trail, artificial horizon (pitch/roll), 360° compass rose, and coordinate readouts.
+- **Mobile / Tablet Layout ($< 1024\text{px}$):**
+  - **Full-Screen Single Module Viewport:** Automatically adapts for one-handed operation.
+  - **Bottom Thumb Navigation Bar:** Switch effortlessly between:
+    1. `[Camera]` — Stacked live RGB and depth feeds.
+    2. `[2D/3D Map]` — Interactive 2D SLAM grid with live laser overlay and 3D spatial view.
+    3. `[GPS Map]` — Full-screen Leaflet satellite map and vehicle orientation HUD.
+
+#### C. Running the Master System Launch
+The unified master launch brings up the entire vehicle autonomy pipeline in one command:
+```bash
+# Unified Master Launch (Sensors + Description + EKF + SLAM + Bridges + Web Dashboard)
+ros2 launch ev_bringup system_core.launch.py
+```
+
+Optional launch arguments:
+```bash
+# Bench testing without GPS or with specific LiDAR port:
+ros2 launch ev_bringup system_core.launch.py use_gps:=false lidar_port:=/dev/ttyUSB0
+
+# Headless mode (no local RViz 2 window, visualization purely through Web Dashboard):
+ros2 launch ev_bringup system_core.launch.py use_rviz:=false
+```
+
+#### D. Standalone Component Bringup
+If testing components individually:
+```bash
+# 1. Start Telemetry & Video Bridges only:
+ros2 launch ev_bringup telemetry_bridge.launch.py
+
+# 2. Start Web Dashboard HTTP server only:
+ros2 launch ev_bringup web_dashboard.launch.py
+```
+
+#### E. Accessing the Dashboard
+Open Google Chrome, Mozilla Firefox, or Safari on any device connected to the vehicle network:
+- **On the Jetson:** [http://localhost:3000](http://localhost:3000)
+- **From Remote Laptop / Phone:** `http://<JETSON_IP>:3000` (e.g., `http://192.168.1.50:3000`)
 
 ---
 

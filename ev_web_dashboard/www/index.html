@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Smart EV Buggy — Command Center</title>
+
+  <!-- Offline Vendor Stylesheets -->
+  <link rel="stylesheet" href="css/vendor/leaflet.css">
+
+  <!-- Custom Glassmorphic Dark Theme -->
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+  <!-- ===================================================================== -->
+  <!-- 1. TOP STATUS BAR                                                     -->
+  <!-- ===================================================================== -->
+  <header class="top-status-bar">
+    <div class="brand-section">
+      <svg class="brand-logo-icon" viewBox="0 0 24 24">
+        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
+      </svg>
+      <span class="brand-title">SMART EV COMMAND CENTER</span>
+    </div>
+
+    <div class="stats-section">
+      <!-- ROS 2 Bridge Pill -->
+      <div class="stat-item">
+        <span id="bridge-status-badge" class="status-pill pill-warning">
+          <span id="bridge-status-text">CONNECTING</span>
+        </span>
+      </div>
+
+      <!-- Speed Telemetry -->
+      <div class="stat-item hide-mobile">
+        <span>Speed:</span>
+        <strong id="stat-speed">0.00 m/s</strong>
+      </div>
+
+      <!-- Heading Telemetry -->
+      <div class="stat-item hide-mobile">
+        <span>Heading:</span>
+        <strong id="stat-heading">0.0°</strong>
+      </div>
+
+      <!-- GPS Status -->
+      <div class="stat-item">
+        <span>GPS:</span>
+        <span id="stat-gps-status" class="status-pill pill-danger">NO FIX</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- 2. MAIN 3-MODULE GRID                                                 -->
+  <!-- ===================================================================== -->
+  <main class="dashboard-grid">
+
+    <!-- MODULE 1: CAMERA & DEPTH FEEDS -->
+    <section id="module-camera" class="dashboard-module active-module-mobile">
+      <div class="module-header">
+        <span>LIVE VIDEO & DEPTH (:8080)</span>
+        <div class="module-tools">
+          <span class="status-pill pill-success">15 FPS</span>
+        </div>
+      </div>
+      <div class="camera-module-content">
+        <!-- RGB Camera Feed -->
+        <div class="video-feed-box">
+          <img id="camera-stream-rgb" src="" alt="Connecting to ZED 2i RGB Feed...">
+          <div class="feed-label-tag">ZED 2i — RGB Stream</div>
+        </div>
+        <!-- CUDA Depth Map Feed -->
+        <div class="video-feed-box">
+          <img id="camera-stream-depth" src="" alt="Connecting to ZED 2i Depth Feed...">
+          <div class="feed-label-tag">ZED 2i — Depth Image</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 2: 2D SLAM & 3D MAPPING VIEWPORTS -->
+    <section id="module-mapping" class="dashboard-module">
+      <div class="module-header">
+        <span>2D SLAM & 3D SPATIAL VIEW (:9090)</span>
+        <div class="module-tools">
+          <button id="btn-map-follow" class="btn-tool active">Follow: ON</button>
+          <button id="btn-map-center" class="btn-tool">Center</button>
+          <button id="btn-map-reset" class="btn-tool">Reset</button>
+          <button id="btn-toggle-map-layout" class="btn-tool" title="Toggle 2D/3D Layout">2D / 3D</button>
+        </div>
+      </div>
+      <div id="mapping-split-container" class="mapping-split-container">
+        <!-- 2D SLAM Canvas -->
+        <div class="viewport-2d">
+          <div class="viewport-tag">2D Occupancy Grid (/map + /scan_filtered)</div>
+          <canvas id="map-canvas-2d"></canvas>
+        </div>
+        <!-- 3D Spatial Three.js Viewport -->
+        <div class="viewport-3d">
+          <div class="viewport-tag">3D Spatial View (WebGL / Touch Orbit)</div>
+          <canvas id="map-canvas-3d"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- MODULE 3: GPS LOCATION MAP & TELEMETRY HUD -->
+    <section id="module-gps" class="dashboard-module">
+      <div class="module-header">
+        <span>GPS LOCATION & ATTITUDE HUD</span>
+        <div class="module-tools">
+          <button id="btn-gps-center" class="btn-tool">Center</button>
+          <button id="btn-gps-clear" class="btn-tool">Clear Trail</button>
+        </div>
+      </div>
+      <div class="gps-module-content">
+        <!-- Interactive Leaflet Map -->
+        <div id="leaflet-gps-map"></div>
+
+        <!-- Telemetry HUD Overlay -->
+        <div class="hud-widgets-overlay">
+          <!-- Artificial Horizon Widget -->
+          <div class="hud-widget">
+            <span class="hud-widget-title">Attitude</span>
+            <div class="artificial-horizon-bezel">
+              <div class="horizon-ground"></div>
+              <div id="horizon-line" class="horizon-line"></div>
+            </div>
+            <span id="stat-rpy" style="font-size:0.65rem; color:var(--text-muted)">R: 0.0° | P: 0.0°</span>
+          </div>
+
+          <!-- Compass Rose Widget -->
+          <div class="hud-widget">
+            <span class="hud-widget-title">Compass</span>
+            <div class="compass-bezel">
+              <svg id="compass-rose" class="compass-rose" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="46" fill="none" stroke="#334155" stroke-width="2"/>
+                <text x="50" y="20" fill="#ef4444" font-size="12" font-weight="bold" text-anchor="middle">N</text>
+                <text x="82" y="54" fill="#94a3b8" font-size="10" text-anchor="middle">E</text>
+                <text x="50" y="88" fill="#94a3b8" font-size="10" text-anchor="middle">S</text>
+                <text x="18" y="54" fill="#94a3b8" font-size="10" text-anchor="middle">W</text>
+                <polygon points="50,22 54,45 50,42 46,45" fill="#ef4444"/>
+                <polygon points="50,78 54,55 50,58 46,55" fill="#64748b"/>
+              </svg>
+            </div>
+            <span style="font-size:0.65rem; color:var(--text-muted)">360° Ring</span>
+          </div>
+
+          <!-- GPS Coordinates Readout -->
+          <div class="hud-widget gps-info-strip">
+            <span class="hud-widget-title">GNSS Readout</span>
+            <div><span>Status: </span><strong id="hud-gps-status" class="badge-fix-none">NO FIX</strong></div>
+            <div><span>Lat: </span><strong id="hud-gps-lat">0.000000°</strong></div>
+            <div><span>Lon: </span><strong id="hud-gps-lon">0.000000°</strong></div>
+            <div><span>Alt: </span><strong id="hud-gps-alt">0.0 m</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- 3. MOBILE BOTTOM THUMB NAVIGATION BAR                                 -->
+  <!-- ===================================================================== -->
+  <nav class="mobile-nav-bar">
+    <button class="mobile-nav-btn active" data-target="module-camera">
+      <svg viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+      <span>Camera</span>
+    </button>
+    <button class="mobile-nav-btn" data-target="module-mapping">
+      <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+      <span>2D/3D Map</span>
+    </button>
+    <button class="mobile-nav-btn" data-target="module-gps">
+      <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      <span>GPS Map</span>
+    </button>
+  </nav>
+
+  <!-- Offline Vendor Libraries -->
+  <script src="js/vendor/roslib.min.js"></script>
+  <script src="js/vendor/three.min.js"></script>
+  <script src="js/vendor/leaflet.js"></script>
+
+  <!-- Smart EV Dashboard Core Modules -->
+  <script src="js/ros_bridge.js"></script>
+  <script src="js/map_renderer.js"></script>
+  <script src="js/telemetry_hud.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
