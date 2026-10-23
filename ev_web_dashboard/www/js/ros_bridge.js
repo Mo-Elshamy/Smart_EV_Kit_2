@@ -186,10 +186,15 @@ const ROSBridge = {
     const statusEl = document.getElementById('stat-gps-status');
     const coordsEl = document.getElementById('stat-gps-coords');
 
+    const status = msg.status ? msg.status.status : -1;
+    const lat = typeof msg.latitude === 'number' ? msg.latitude : parseFloat(msg.latitude);
+    const lon = typeof msg.longitude === 'number' ? msg.longitude : parseFloat(msg.longitude);
+    const isCoordsValid = isFinite(lat) && isFinite(lon) && !isNaN(lat) && !isNaN(lon) && (lat !== 0 || lon !== 0);
+
     let statusText = 'NO FIX';
     let statusClass = 'pill-danger';
-    if (msg.status && msg.status.status >= 0) {
-      statusText = msg.status.status === 0 ? 'GPS FIX' : 'DGPS/RTK FIX';
+    if (status >= 0 && isCoordsValid) {
+      statusText = status === 0 ? '3D FIX' : 'RTK/DGPS';
       statusClass = 'pill-success';
     }
 
@@ -198,8 +203,12 @@ const ROSBridge = {
       statusEl.className = `status-pill ${statusClass}`;
     }
 
-    if (coordsEl && (msg.latitude !== 0 || msg.longitude !== 0)) {
-      coordsEl.textContent = `${msg.latitude.toFixed(6)}°, ${msg.longitude.toFixed(6)}° (Alt: ${msg.altitude.toFixed(1)}m)`;
+    if (coordsEl) {
+      if (isCoordsValid) {
+        coordsEl.textContent = `${lat.toFixed(6)}°, ${lon.toFixed(6)}°`;
+      } else {
+        coordsEl.textContent = 'Searching satellites...';
+      }
     }
   },
 

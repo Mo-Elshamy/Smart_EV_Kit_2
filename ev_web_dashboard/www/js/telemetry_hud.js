@@ -123,52 +123,60 @@ const TelemetryHUD = {
 
     // 1. Process GPS (/fix)
     window.ROSBridge.on('gps', (msg) => {
-      if (!msg || (msg.latitude === 0 && msg.longitude === 0)) return;
+      if (!msg) return;
 
-      const lat = msg.latitude;
-      const lon = msg.longitude;
-      const alt = msg.altitude;
       const status = msg.status ? msg.status.status : -1;
+      const lat = typeof msg.latitude === 'number' ? msg.latitude : parseFloat(msg.latitude);
+      const lon = typeof msg.longitude === 'number' ? msg.longitude : parseFloat(msg.longitude);
+      const alt = typeof msg.altitude === 'number' ? msg.altitude : parseFloat(msg.altitude);
 
-      this.lastLat = lat;
-      this.lastLon = lon;
-      this.hasGpsFix = status >= 0;
+      const isValidCoords = isFinite(lat) && isFinite(lon) && !isNaN(lat) && !isNaN(lon) && (lat !== 0 || lon !== 0);
+      this.hasGpsFix = (status >= 0) && isValidCoords;
 
-      // Update Leaflet marker
-      if (this.vehicleMarker) {
-        this.vehicleMarker.setLatLng([lat, lon]);
-      }
-
-      // Add to GPS trail
-      const lastPt = this.gpsTrail[this.gpsTrail.length - 1];
-      if (!lastPt || Math.hypot(lastPt[0] - lat, lastPt[1] - lon) > 0.00002) {
-        this.gpsTrail.push([lat, lon]);
-        if (this.trailPolyline) {
-          this.trailPolyline.setLatLngs(this.gpsTrail);
-        }
-      }
-
-      if (this.followVehicle && this.map) {
-        if (!this.firstFixOccurred && this.hasGpsFix) {
-          this.firstFixOccurred = true;
-          this.map.setView([lat, lon], 18, { animate: true });
-        } else {
-          this.map.setView([lat, lon], this.map.getZoom(), { animate: true });
-        }
-      }
-
-      // Update GPS HUD Overlay
       const latEl = document.getElementById('hud-gps-lat');
       const lonEl = document.getElementById('hud-gps-lon');
       const altEl = document.getElementById('hud-gps-alt');
       const fixEl = document.getElementById('hud-gps-status');
 
-      if (latEl) latEl.textContent = lat.toFixed(6) + '°';
-      if (lonEl) lonEl.textContent = lon.toFixed(6) + '°';
-      if (altEl) altEl.textContent = alt.toFixed(1) + ' m';
       if (fixEl) {
-        fixEl.textContent = this.hasGpsFix ? '3D FIX' : 'NO FIX';
+        fixEl.textContent = this.hasGpsFix ? (status === 0 ? '3D FIX' : 'RTK FIX') : 'NO FIX';
         fixEl.className = this.hasGpsFix ? 'badge-fix-ok' : 'badge-fix-none';
+      }
+
+      if (this.hasGpsFix) {
+        this.lastLat = lat;
+        this.lastLon = lon;
+
+        if (latEl) latEl.textContent = lat.toFixed(6) + '°';
+        if (lonEl) lonEl.textContent = lon.toFixed(6) + '°';
+        if (altEl && isFinite(alt)) altEl.textContent = alt.toFixed(1) + ' m';
+
+        // Update Leaflet marker safely
+        if (this.vehicleMarker) {
+          this.vehicleMarker.setLatLng([lat, lon]);
+        }
+
+        // Add to GPS trail
+        const lastPt = this.gpsTrail[this.gpsTrail.length - 1];
+        if (!lastPt || Math.hypot(lastPt[0] - lat, lastPt[1] - lon) > 0.00002) {
+          this.gpsTrail.push([lat, lon]);
+          if (this.trailPolyline) {
+            this.trailPolyline.setLatLngs(this.gpsTrail);
+          }
+        }
+
+        if (this.followVehicle && this.map) {
+          if (!this.firstFixOccurred) {
+            this.firstFixOccurred = true;
+            this.map.setView([lat, lon], 18, { animate: true });
+          } else {
+            this.map.setView([lat, lon], this.map.getZoom(), { animate: true });
+          }
+        }
+      } else {
+        if (latEl) latEl.textContent = '--.------°';
+        if (lonEl) lonEl.textContent = '--.------°';
+        if (altEl) altEl.textContent = '--.- m';
       }
     });
 
