@@ -1,0 +1,202 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Ground Grid1
+        - /Smart EV Buggy Model1
+        - /Vehicle TF Frames1
+        - /WT901 IMU Orientation1
+        - /Filtered LaserScan1
+        - /ZED 3D PointCloud1
+        - /Fused Odometry (EKF)1
+        - /GPS Odometry (NavSat)1
+        - /2D SLAM Occupancy Map1
+        - /Global Options1
+      Splitter Ratio: 0.5
+    Tree Height: 618
+  - Class: rviz_common/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Visualization Manager:
+  Class: ""
+  Displays:
+    # 1. Ground Reference Grid
+    - Class: rviz_default_plugins/Grid
+      Name: Ground Grid
+      Enabled: true
+      Plane: XY
+      Cell Size: 1.0
+      Plane Cell Count: 30
+      Color: 140; 160; 180
+      Alpha: 0.4
+      Line Style: Lines
+
+    # 2. Buggy 3D Kinematic Robot Model (URDF)
+    - Class: rviz_default_plugins/RobotModel
+      Name: Smart EV Buggy Model
+      Enabled: true
+      Description Topic:
+        Value: /robot_description
+        Depth: 5
+        Durability Policy: Transient Local
+      Visual Enabled: true
+      Collision Enabled: false
+      Alpha: 1.0
+
+    # 3. TF2 Coordinate Frames
+    - Class: rviz_default_plugins/TF
+      Name: Vehicle TF Frames
+      Enabled: true
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Marker Scale: 0.35
+      Update Interval: 0.0
+      Frame Timeout: 15.0
+
+    # 4. WitMotion WT901 9-Axis IMU
+    - Class: rviz_imu_plugin/Imu
+      Name: WT901 IMU Orientation
+      Enabled: true
+      Topic:
+        Value: /imu/data
+        Depth: 5
+        Durability Policy: Volatile
+      Enable Axes: true
+      Enable Acceleration: true
+      Scale: 0.4
+
+    # 5. Slamtec RPLIDAR S3 (Filtered Scan)
+    - Class: rviz_default_plugins/LaserScan
+      Name: Filtered LaserScan
+      Enabled: true
+      Topic:
+        Value: /scan_filtered
+        Depth: 5
+        Durability Policy: Volatile
+      Size (m): 0.05
+      Style: Flat Squares
+      Color: 0; 245; 212
+      Color Transformer: FlatColor
+      Selectable: true
+
+    # 6. Raw LaserScan (Optional / Diagnostic)
+    - Class: rviz_default_plugins/LaserScan
+      Name: Raw LaserScan
+      Enabled: false
+      Topic:
+        Value: /scan
+        Depth: 5
+        Durability Policy: Volatile
+      Size (m): 0.02
+      Style: Points
+      Color: 239; 68; 68
+      Color Transformer: FlatColor
+      Selectable: true
+
+    # 7. Stereolabs ZED 2i Registered 3D Point Cloud
+    - Class: rviz_default_plugins/PointCloud2
+      Name: ZED 3D PointCloud
+      Enabled: true
+      Topic:
+        Value: /zed/zed_node/point_cloud/cloud_registered
+        Depth: 5
+        Durability Policy: Volatile
+      Size (m): 0.025
+      Style: Points
+      Color Transformer: RGB8
+      Selectable: true
+
+    # 8. Stereolabs ZED 2i RGB Rectified Stream
+    - Class: rviz_default_plugins/Image
+      Name: ZED RGB Image Feed
+      Enabled: true
+      Topic:
+        Value: /zed/zed_node/rgb/color/rect/image
+        Depth: 5
+        Durability Policy: Volatile
+
+    # 9. Stereolabs ZED 2i CUDA Depth Map
+    - Class: rviz_default_plugins/Image
+      Name: ZED Depth Image Feed
+      Enabled: true
+      Topic:
+        Value: /zed/zed_node/image/depth_image
+        Depth: 5
+        Durability Policy: Volatile
+
+    # 10. Extended Kalman Filter Odometry (odom -> base_link)
+    - Class: rviz_default_plugins/Odometry
+      Name: Fused Odometry (EKF)
+      Enabled: true
+      Topic:
+        Value: /odometry/filtered
+        Depth: 10
+        Durability Policy: Volatile
+      Shape: Arrow
+      Color: 56; 189; 248
+      Keep: 150
+      Length: 0.5
+      Shaft Radius: 0.03
+      Head Radius: 0.06
+      Head Length: 0.12
+
+    # 11. GPS NavSat Odometry (/odometry/gps via navsat_transform_node)
+    - Class: rviz_default_plugins/Odometry
+      Name: GPS Odometry (NavSat)
+      Enabled: true
+      Topic:
+        Value: /odometry/gps
+        Depth: 10
+        Durability Policy: Volatile
+      Shape: Arrow
+      Color: 245; 158; 11
+      Keep: 100
+      Length: 0.4
+      Shaft Radius: 0.03
+      Head Radius: 0.06
+      Head Length: 0.12
+
+    # 12. 2D SLAM Occupancy Grid Map
+    - Class: rviz_default_plugins/Map
+      Name: 2D SLAM Occupancy Map
+      Enabled: true
+      Topic:
+        Value: /map
+        Depth: 5
+        Durability Policy: Transient Local
+        Reliability Policy: Reliable
+      Color Scheme: map
+      Alpha: 0.75
+      Draw Behind: true
+
+  Global Options:
+    Background Color: 15; 23; 42
+    Fixed Frame: map
+    Frame Rate: 30
+
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetGoal
+    - Class: rviz_default_plugins/SetInitialPose
+
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 6.0
+      Focal Point:
+        X: 1.0
+        Y: 0.0
+        Z: 0.5
+      Pitch: 0.55
+      Yaw: 0.80
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05

@@ -34,18 +34,19 @@ src/Smart_EV_Kit_2/
 │   └── CMakeLists.txt, package.xml
 ├── ev_bringup/                 # Launch files, configurations, RViz profiles
 │   ├── launch/
-│   │   ├── view_frames.launch.py            # Static vehicle frame visualizer
+│   │   ├── sensors_all.launch.py            # Master all-sensor launcher (LiDAR + IMU + GPS + ZED)
+│   │   ├── lidar.launch.py                  # Standalone RPLIDAR S3 + roll-cage pillar filter
+│   │   ├── imu.launch.py                    # Standalone WitMotion WT901 IMU + orientation
 │   │   ├── gps.launch.py                    # Standalone Holybro M9N GNSS driver
-│   │   ├── imu.launch.py                    # Standalone WitMotion WT901 IMU + 3D RViz
-│   │   ├── telemetry_sensors.launch.py      # Composite GPS + IMU + TF bringup
-│   │   ├── lidar.launch.py                  # Standalone RPLIDAR S3 + filter
-│   │   ├── lidar_and_description.launch.py  # LiDAR + Roll-cage filter + Vehicle TF + RViz
-│   │   ├── depth_camera.launch.py           # ZED 2i Stereo Depth + RGB + PointCloud + RViz
-│   │   ├── telemetry_bridge.launch.py       # Stage 7: rosbridge (:9090) + web_video_server (:8080)
-│   │   ├── web_dashboard.launch.py          # Stage 7: HTTP static server (:3000)
-│   │   └── system_core.launch.py            # Stage 7: Master unified bringup (All sensors + SLAM + Web)
+│   │   ├── depth_camera.launch.py           # ZED 2i Stereo Depth + RGB + PointCloud
+│   │   ├── web_video.launch.py              # MJPEG video streamer (:8080) + rosbridge (:9090)
+│   │   ├── web_dashboard.launch.py          # Web Command Center HTTP server (:3000)
+│   │   ├── system_web.launch.py             # MASTER OPTION 1: Full System with Web Command Center
+│   │   ├── system_rviz.launch.py            # MASTER OPTION 2: Full System with Dedicated RViz 2
+│   │   └── system_core.launch.py            # Unified system bringup with flexible flags
 │   ├── config/
-│   │   ├── rviz_config.rviz                 # RViz profile with PointCloud, Scans, and Video
+│   │   ├── full_system_rviz.rviz            # All-inclusive RViz profile (TF, Model, RGB, Depth, 3D Cloud, IMU, Scans, Odom, GPS, Map)
+│   │   ├── rviz_config.rviz                 # Standard RViz layout
 │   │   ├── rviz_imu.rviz                    # Dedicated 3D orientation visualizer profile
 │   │   ├── laser_filter_params.yaml         # Angular bounds filter for roll-cage pillars
 │   │   └── zed2i_params.yaml                # ZED 2i camera and CUDA depth tuning overrides
@@ -449,36 +450,62 @@ Stage 7 introduces a zero-install, browser-based **Web Command Center** (`ev_web
     2. `[2D/3D Map]` — Interactive 2D SLAM grid with live laser overlay and 3D spatial view.
     3. `[GPS Map]` — Full-screen Leaflet satellite map and vehicle orientation HUD.
 
-#### C. Running the Master System Launch
-The unified master launch brings up the entire vehicle autonomy pipeline in one command:
+#### C. Master Launch Options
+
+The system provides two tailored master launch files depending on whether you are running from a remote browser or locally on a workstation display:
+
+##### 🌐 Option 1: Master System with Web Command Center (`system_web.launch.py`)
+Brings up all sensors, kinematics, EKF localization, SLAM, and the Web Command Center. Operates headlessly by default for maximum Jetson GPU performance:
 ```bash
-# Unified Master Launch (Sensors + Description + EKF + SLAM + Bridges + Web Dashboard)
-ros2 launch ev_bringup system_core.launch.py
+# Launch entire system with Web Command Center (:3000):
+ros2 launch ev_bringup system_web.launch.py
+
+# With custom sensor ports or bench flags:
+ros2 launch ev_bringup system_web.launch.py lidar_port:=/dev/ttyUSB0 use_imu:=false use_gps:=false
+```
+Open **`http://<JETSON_IP>:3000`** on your laptop or phone.
+
+---
+
+##### 🖥️ Option 2: Master System with Dedicated RViz 2 (`system_rviz.launch.py`)
+Brings up all sensors, kinematics, EKF, and SLAM, loading an all-inclusive, pre-configured RViz 2 profile (`full_system_rviz.rviz`). Zero web overhead:
+```bash
+# Launch entire system with comprehensive RViz 2 workspace:
+ros2 launch ev_bringup system_rviz.launch.py
+
+# With custom ports / flags:
+ros2 launch ev_bringup system_rviz.launch.py lidar_port:=/dev/ttyUSB0 use_gps:=false
 ```
 
-Optional launch arguments:
+---
+
+#### D. Modular Component & Sensor Bringup
+
+Every component can be launched and tested individually:
+
 ```bash
-# Bench testing without GPS or with specific LiDAR port:
-ros2 launch ev_bringup system_core.launch.py use_gps:=false lidar_port:=/dev/ttyUSB0
+# --- 1. Individual Sensor Launchers ---
+ros2 launch ev_bringup lidar.launch.py serial_port:=/dev/ttyUSB0
+ros2 launch ev_bringup imu.launch.py port:=/dev/ttyUSB1 baud:=9600
+ros2 launch ev_bringup gps.launch.py port:=/dev/ttyUSB2 baud:=115200
+ros2 launch ev_bringup depth_camera.launch.py camera_model:=zed2i
+ros2 launch ev_bringup sensors_all.launch.py # Launches all 4 sensors together
 
-# Headless mode (no local RViz 2 window, visualization purely through Web Dashboard):
-ros2 launch ev_bringup system_core.launch.py use_rviz:=false
-```
+# --- 2. Localization & EKF State Estimation ---
+ros2 launch ev_localization localization.launch.py use_gps_odom:=true
 
-#### D. Standalone Component Bringup
-If testing components individually:
-```bash
-# 1. Start Telemetry & Video Bridges only:
-ros2 launch ev_bringup telemetry_bridge.launch.py
+# --- 3. 2D Online SLAM Mapping ---
+ros2 launch ev_localization mapping_slam.launch.py
 
-# 2. Start Web Dashboard HTTP server only:
-ros2 launch ev_bringup web_dashboard.launch.py
+# --- 4. Web Video Streaming & Telemetry Bridges ---
+ros2 launch ev_bringup web_video.launch.py # Ports 8080 (MJPEG) & 9090 (WebSocket)
+ros2 launch ev_bringup web_dashboard.launch.py # Port 3000 (HTTP)
 ```
 
 #### E. Accessing the Dashboard
 Open Google Chrome, Mozilla Firefox, or Safari on any device connected to the vehicle network:
 - **On the Jetson:** [http://localhost:3000](http://localhost:3000)
-- **From Remote Laptop / Phone:** `http://<JETSON_IP>:3000` (e.g., `http://192.168.1.50:3000`)
+- **From Remote Laptop / Phone:** `http://<JETSON_IP>:3000` (e.g., `http://192.168.1.85:3000`)
 
 ---
 
