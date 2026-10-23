@@ -36,30 +36,32 @@ const TelemetryHUD = {
       attributionControl: false
     });
 
-    // 1. Dark Mode Basemap (CartoDB Dark Matter)
-    const darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      subdomains: 'abcd'
-    });
-
-    // 2. High-Resolution Satellite Aerial Basemap (Esri World Imagery)
+    // 1. High-Resolution Satellite Aerial Basemap (Esri World Imagery - 100% Free, No API Key)
     const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19
+      maxZoom: 19,
+      attribution: '&copy; Esri World Imagery'
     });
 
-    // 3. OpenStreetMap Streets Basemap
+    // 2. OpenStreetMap Standard Streets (100% Free, No API Key)
     const streetTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
     });
 
-    // Add default dark tiles
-    darkTiles.addTo(this.map);
+    // 3. Dark Gray Canvas (Esri Dark Canvas - 100% Free, No API Key)
+    const darkTiles = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: '&copy; Esri Dark Canvas'
+    });
 
-    // Layer switcher control
+    // Add Satellite Aerial by default (Real world satellite view of the car)
+    satelliteTiles.addTo(this.map);
+
+    // Layer switcher control (Top-right pill)
     const baseLayers = {
-      "🌙 Dark Mode": darkTiles,
-      "🛰️ Satellite": satelliteTiles,
-      "🗺️ Streets": streetTiles
+      "🛰️ Satellite Aerial": satelliteTiles,
+      "🗺️ Road Streets": streetTiles,
+      "🌙 Dark Canvas": darkTiles
     };
     L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
 
