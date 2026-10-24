@@ -19,6 +19,7 @@
   <exec_depend>laser_filters</exec_depend>
   <exec_depend>zed_wrapper</exec_depend>
   <exec_depend>robot_localization</exec_depend>
+  <!-- <exec_depend>ev_localization</exec_depend> -->
 
   <export>
     <build_type>ament_cmake</build_type>
