@@ -25,6 +25,8 @@ Upgraded Smart EV sensor rig with kinematics, transform pipelines, hardware driv
 
 ```text
 src/Smart_EV_Kit_2/
+├── INSTRUCTIONS.md             # Phase 1 parallel 3-team student lab instructions
+├── README.md                   # Platform architecture and operations reference
 ├── ev_description/             # Kinematic tree (URDF/xacro) & coordinate frames
 │   ├── urdf/
 │   │   ├── ev_buggy.urdf.xacro # Base robot root (base_link), chassis, and wheels
@@ -85,13 +87,30 @@ sudo apt install -y \
   ros-$ROS_DISTRO-robot-state-publisher \
   ros-$ROS_DISTRO-joint-state-publisher \
   ros-$ROS_DISTRO-rviz2 \
+  ros-$ROS_DISTRO-tf2-tools \
+  ros-$ROS_DISTRO-tf2-geometry-msgs \
   ros-$ROS_DISTRO-laser-filters \
   ros-$ROS_DISTRO-robot-localization \
   ros-$ROS_DISTRO-slam-toolbox \
   ros-$ROS_DISTRO-nav2-map-server \
+  ros-$ROS_DISTRO-nmea-msgs \
+  ros-$ROS_DISTRO-geographic-msgs \
+  ros-$ROS_DISTRO-diagnostic-updater \
+  ros-$ROS_DISTRO-backward-ros \
+  ros-$ROS_DISTRO-zed-description \
+  ros-$ROS_DISTRO-image-transport-plugins \
+  ros-$ROS_DISTRO-compressed-image-transport \
+  ros-$ROS_DISTRO-compressed-depth-image-transport \
+  ros-$ROS_DISTRO-theora-image-transport \
+  ros-$ROS_DISTRO-zstd-image-transport \
   cuda-toolkit-13-2 \
+  qtbase5-dev \
+  libqt5serialport5-dev \
+  nlohmann-json3-dev \
+  python3-serial \
+  python3-numpy \
   libusb-1.0-0-dev \
-  zstd git
+  zstd git evince
 ```
 
 ### 2. Configure Swap Space on NVIDIA Jetson (Memory Safety)
@@ -111,11 +130,22 @@ chmod +x ~/ZED_SDK_Jetson_5.2.run
 ~/ZED_SDK_Jetson_5.2.run -- silent skip_tools
 ```
 
-### 4. Build the Workspace Safely
+### 4. Clone Sensor Drivers into `ev_sensors/`
+```bash
+cd ~/ev_ws/src/Smart_EV_Kit_2/ev_sensors/
+git clone https://github.com/Slamtec/sllidar_ros2.git
+git clone --recursive https://github.com/ElettraSciComp/witmotion_ros.git
+git clone -b ros2 https://github.com/ros-drivers/nmea_navsat_driver.git
+git clone https://github.com/stereolabs/zed-ros2-interfaces.git
+git clone https://github.com/stereolabs/zed-ros2-wrapper.git
+```
+
+### 5. Build the Workspace Safely
 Always compile with throttled parallel jobs (`-j2` and `--parallel-workers 1`) to keep RAM usage within limits on the Jetson:
 ```bash
 cd ~/ev_ws
 source /opt/ros/$ROS_DISTRO/setup.bash
+rosdep install --from-paths src --ignore-src -r -y
 MAKEFLAGS="-j2" colcon build --symlink-install --parallel-workers 1
 source install/setup.bash
 ```

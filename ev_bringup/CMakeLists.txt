@@ -16,6 +16,8 @@ install(
   PROGRAMS
     scripts/imu_tf_broadcaster.py
     scripts/setup_imu.sh
+    scripts/setup_lidar.sh
+    scripts/setup_gps.sh
   DESTINATION lib/${PROJECT_NAME}
 )
 
