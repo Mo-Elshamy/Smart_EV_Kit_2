@@ -1,0 +1,32 @@
+# Laser filter chain to mask vehicle roll-cage pillars from RPLIDAR S3 scan
+# Input topic: /scan -> Output topic: /scan_filtered
+
+scan_to_scan_filter_chain:
+  ros__parameters:
+    filter1:
+      name: front_left_pillar
+      type: laser_filters/LaserScanAngularBoundsFilterInPlace
+      params:
+        lower_angle: 0.65   # ~37 deg (front-left pillar)
+        upper_angle: 0.85   # ~49 deg
+
+    filter2:
+      name: front_right_pillar
+      type: laser_filters/LaserScanAngularBoundsFilterInPlace
+      params:
+        lower_angle: -0.85  # ~ -49 deg (front-right pillar)
+        upper_angle: -0.65  # ~ -37 deg
+
+    filter3:
+      name: rear_left_pillar
+      type: laser_filters/LaserScanAngularBoundsFilterInPlace
+      params:
+        lower_angle: 2.25   # ~129 deg (rear-left roll-bar)
+        upper_angle: 2.45   # ~140 deg
+
+    filter4:
+      name: rear_right_pillar
+      type: laser_filters/LaserScanAngularBoundsFilterInPlace
+      params:
+        lower_angle: -2.45  # ~ -140 deg (rear-right roll-bar)
+        upper_angle: -2.25  # ~ -129 deg

@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ev_bringup</name>
+  <version>1.0.0</version>
+  <description>Launch files, configurations, and RViz displays for Smart EV Buggy</description>
+  <maintainer email="student@smart-ev.local">Smart EV Team</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>xacro</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>ev_description</exec_depend>
+  <exec_depend>witmotion_ros</exec_depend>
+  <exec_depend>nmea_navsat_driver</exec_depend>
+  <exec_depend>sllidar_ros2</exec_depend>
+  <exec_depend>laser_filters</exec_depend>
+  <exec_depend>zed_wrapper</exec_depend>
+  <exec_depend>robot_localization</exec_depend>
+  <exec_depend>ev_localization</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

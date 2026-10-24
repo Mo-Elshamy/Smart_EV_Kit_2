@@ -1,0 +1,33 @@
+# Custom parameter overrides for Stereolabs ZED 2i on Smart EV Buggy
+# Optimized for Jetson Orin (HD720 @ 15 FPS with CUDA ULTRA Depth)
+
+/**:
+  ros__parameters:
+    general:
+      camera_model: 'zed2i'
+      grab_resolution: 'HD720'      # 1280x720
+      grab_frame_rate: 15           # 15 FPS
+      pub_frame_rate: 15.0          # 15 FPS
+      sdk_timestamp_clock: 'SYSTEM_CLOCK'
+
+    video:
+      publish_rgb: true             # Advertise RGB images for RViz and perception
+
+    depth:
+      depth_mode: 'ULTRA'           # High accuracy CUDA stereo depth (runs on GPU without TensorRT AI dependencies)
+      min_depth: 0.3                # Minimum depth in meters
+      max_depth: 15.0               # Maximum depth in meters
+      point_cloud_freq: 15.0        # Smooth 15 Hz point cloud streaming
+      point_cloud_res: 'COMPACT'    # Bandwidth-optimized point cloud
+      publish_point_cloud: true     # Advertise 3D point cloud
+      publish_depth_map: true       # Advertise raw depth map
+      publish_depth_image: true     # Advertise colorized depth image for visual RViz view
+
+    pos_tracking:
+      pos_tracking_enabled: true    # Compute visual odometry
+      publish_tf: false             # Set to false: robot_localization EKF manages odom -> base_link
+      publish_map_tf: false         # Set to false: slam_toolbox manages map -> odom
+      publish_imu_tf: false
+
+    debug:
+      use_pub_timestamps: true      # Stamp messages with ROS system time to prevent TF extrapolation timeouts

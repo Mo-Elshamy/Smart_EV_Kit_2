@@ -1,0 +1,147 @@
+<?xml version="1.0"?>
+<robot name="ev_buggy" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===================================================================== -->
+  <!-- ROOT COORDINATE FRAME (REP-105)                                       -->
+  <!-- base_link: Rear axle center projected down to the ground plane       -->
+  <!-- ===================================================================== -->
+  <link name="base_link">
+    <visual>
+      <origin xyz="0.65 0 0.02" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.1 0.1 0.02"/>
+      </geometry>
+      <material name="origin_marker">
+        <color rgba="1.0 0.84 0.0 0.8"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN CHASSIS BODY                                                     -->
+  <!-- ===================================================================== -->
+  <link name="chassis_link">
+    <!-- Main lower hull / belly pan -->
+    <visual>
+      <origin xyz="0.65 0.0 0.18" rpy="0 0 0"/>
+      <geometry>
+        <box size="1.50 0.70 0.16"/>
+      </geometry>
+      <material name="chassis_dark">
+        <color rgba="0.15 0.16 0.18 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Upper body cowl / hood -->
+    <visual>
+      <origin xyz="0.95 0.0 0.30" rpy="0 0.08 0"/>
+      <geometry>
+        <box size="0.75 0.65 0.10"/>
+      </geometry>
+      <material name="body_paint">
+        <color rgba="0.12 0.53 0.90 1.0"/>
+      </material>
+    </visual>
+
+    <!-- Cockpit / Roll cage arch -->
+    <visual>
+      <origin xyz="0.45 0.0 0.55" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.70 0.62 0.50"/>
+      </geometry>
+      <material name="roll_cage">
+        <color rgba="0.25 0.25 0.28 0.6"/>
+      </material>
+    </visual>
+
+    <!-- Roll cage top roof plate (Sensor mounting platform) -->
+    <visual>
+      <origin xyz="0.45 0.0 0.80" rpy="0 0 0"/>
+      <geometry>
+        <box size="0.60 0.58 0.02"/>
+      </geometry>
+      <material name="roof_plate">
+        <color rgba="0.18 0.18 0.20 1.0"/>
+      </material>
+    </visual>
+  </link>
+
+  <joint name="chassis_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis_link"/>
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0"/>
+  </joint>
+
+  <!-- ===================================================================== -->
+  <!-- WHEELS (Visual representation of 4-wheel EV platform)                 -->
+  <!-- ===================================================================== -->
+  <!-- Rear Left Wheel -->
+  <link name="rear_left_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry>
+        <cylinder radius="0.18" length="0.12"/>
+      </geometry>
+      <material name="tire_rubber">
+        <color rgba="0.08 0.08 0.08 1.0"/>
+      </material>
+    </visual>
+  </link>
+  <joint name="rear_left_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_left_wheel"/>
+    <origin xyz="0.0 0.40 0.18" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Rear Right Wheel -->
+  <link name="rear_right_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry>
+        <cylinder radius="0.18" length="0.12"/>
+      </geometry>
+      <material name="tire_rubber"/>
+    </visual>
+  </link>
+  <joint name="rear_right_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="rear_right_wheel"/>
+    <origin xyz="0.0 -0.40 0.18" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Front Left Wheel -->
+  <link name="front_left_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry>
+        <cylinder radius="0.18" length="0.12"/>
+      </geometry>
+      <material name="tire_rubber"/>
+    </visual>
+  </link>
+  <joint name="front_left_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_left_wheel"/>
+    <origin xyz="1.30 0.40 0.18" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Front Right Wheel -->
+  <link name="front_right_wheel">
+    <visual>
+      <origin xyz="0 0 0" rpy="1.570796 0 0"/>
+      <geometry>
+        <cylinder radius="0.18" length="0.12"/>
+      </geometry>
+      <material name="tire_rubber"/>
+    </visual>
+  </link>
+  <joint name="front_right_wheel_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="front_right_wheel"/>
+    <origin xyz="1.30 -0.40 0.18" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Include rigid sensor mount transforms and 3D visual models -->
+  <xacro:include filename="$(find ev_description)/urdf/sensor_mounts.xacro"/>
+
+</robot>
