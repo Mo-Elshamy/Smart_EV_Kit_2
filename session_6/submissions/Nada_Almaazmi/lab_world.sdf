@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<sdf version="1.8">
+  <world name="lab_world">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-imu-system" name="gz::sim::systems::Imu"/>
+
+        <plugin filename="gz-sim-navsat-system"
+            name="gz::sim::systems::NavSat"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>100 100</size></plane></geometry>
+          <material>
+            <ambient>0.8 0.8 0.8 1</ambient>
+            <diffuse>0.8 0.8 0.8 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="lab_walls">
+      <static>true</static>
+      <link name="wall_link">
+        <collision name="wall_north_col">
+          <pose>0 2 0.25 0 0 0</pose>
+          <geometry><box><size>4.2 0.1 0.5</size></box></geometry>
+        </collision>
+        <visual name="wall_north_vis">
+          <pose>0 2 0.25 0 0 0</pose>
+          <geometry><box><size>4.2 0.1 0.5</size></box></geometry>
+          <material><ambient>0.6 0.6 0.7 1</ambient><diffuse>0.6 0.6 0.7 1</diffuse></material>
+        </visual>
+        <collision name="wall_south_col">
+          <pose>0 -2 0.25 0 0 0</pose>
+          <geometry><box><size>4.2 0.1 0.5</size></box></geometry>
+        </collision>
+        <visual name="wall_south_vis">
+          <pose>0 -2 0.25 0 0 0</pose>
+          <geometry><box><size>4.2 0.1 0.5</size></box></geometry>
+          <material><ambient>0.6 0.6 0.7 1</ambient><diffuse>0.6 0.6 0.7 1</diffuse></material>
+        </visual>
+        <collision name="wall_east_col">
+          <pose>2 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.1 4.2 0.5</size></box></geometry>
+        </collision>
+        <visual name="wall_east_vis">
+          <pose>2 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.1 4.2 0.5</size></box></geometry>
+          <material><ambient>0.6 0.6 0.7 1</ambient><diffuse>0.6 0.6 0.7 1</diffuse></material>
+        </visual>
+        <collision name="wall_west_col">
+          <pose>-2 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.1 4.2 0.5</size></box></geometry>
+        </collision>
+        <visual name="wall_west_vis">
+          <pose>-2 0 0.25 0 0 0</pose>
+          <geometry><box><size>0.1 4.2 0.5</size></box></geometry>
+          <material><ambient>0.6 0.6 0.7 1</ambient><diffuse>0.6 0.6 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="obstacle_box">
+      <static>true</static>
+      <pose>1.0 0.4 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><box><size>0.3 0.3 0.5</size></box></geometry></collision>
+        <visual name="vis">
+          <geometry><box><size>0.3 0.3 0.5</size></box></geometry>
+          <material><ambient>0.9 0.45 0.1 1</ambient><diffuse>0.9 0.45 0.1 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="obstacle_cylinder">
+      <static>true</static>
+      <pose>-0.8 1.0 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="col"><geometry><cylinder><radius>0.15</radius><length>0.5</length></cylinder></geometry></collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.15</radius><length>0.5</length></cylinder></geometry>
+          <material><ambient>0.1 0.5 0.9 1</ambient><diffuse>0.1 0.5 0.9 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+        <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <world_frame_orientation>ENU</world_frame_orientation>
+      <latitude_deg>30.0444</latitude_deg>
+      <longitude_deg>31.2357</longitude_deg>
+      <elevation>0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
+  </world>
+</sdf>
