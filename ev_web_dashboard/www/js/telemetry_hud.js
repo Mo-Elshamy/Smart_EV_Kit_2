@@ -11,14 +11,32 @@ const TelemetryHUD = {
   hasGpsFix: false,
   firstFixOccurred: false,
   followVehicle: true,
-  lastLat: 0,
-  lastLon: 0,
+  defaultLat: 25.322608093519516,
+  defaultLon: 55.48792024091055,
+  lastLat: 25.322608093519516,
+  lastLon: 55.48792024091055,
   headingDeg: 0,
 
   init() {
     this.initMap();
+    this.initStandbyDisplay();
     this.bindEvents();
     this.bindROS();
+  },
+
+  initStandbyDisplay() {
+    const latEl = document.getElementById('hud-gps-lat');
+    const lonEl = document.getElementById('hud-gps-lon');
+    const altEl = document.getElementById('hud-gps-alt');
+    const fixEl = document.getElementById('hud-gps-status');
+
+    if (latEl) latEl.textContent = `${this.defaultLat.toFixed(6)}° (Standby)`;
+    if (lonEl) lonEl.textContent = `${this.defaultLon.toFixed(6)}° (Standby)`;
+    if (altEl) altEl.textContent = '--.- m';
+    if (fixEl) {
+      fixEl.textContent = 'NO FIX (STANDBY)';
+      fixEl.className = 'badge-fix-none';
+    }
   },
 
   initMap() {
@@ -28,74 +46,83 @@ const TelemetryHUD = {
       return;
     }
 
-    // Default coordinates: (0,0) or last known location
+    // Default standby coordinates when GPS has no signal
     this.map = L.map('leaflet-gps-map', {
-      center: [25.0, 55.0], // Initial fallback
-      zoom: 16,
+      center: [this.defaultLat, this.defaultLon],
+      zoom: 17,
       zoomControl: true,
       attributionControl: false
     });
 
-    // 1. High-Resolution Satellite Aerial Basemap (Esri World Imagery - 100% Free, No API Key)
+    // 1. High-Resolution Satellite Aerial Basemap (Esri World Imagery)
     const satelliteTiles = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: '&copy; Esri World Imagery'
     });
 
-    // 2. OpenStreetMap Standard Streets (100% Free, No API Key)
+    // 2. Google Satellite with Hybrid Labels (Roads, Buildings, Landmarks)
+    const googleSatTiles = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google'
+    });
+
+    // 3. OpenStreetMap Standard Streets
     const streetTiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; OpenStreetMap contributors'
     });
 
-    // 3. Dark Gray Canvas (Esri Dark Canvas - 100% Free, No API Key)
+    // 4. Dark Gray Canvas (Esri Dark Canvas)
     const darkTiles = L.tileLayer('https://server.arcgisonline.com/arcgis/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
       attribution: '&copy; Esri Dark Canvas'
     });
 
-    // Add Satellite Aerial by default (Real world satellite view of the car)
-    satelliteTiles.addTo(this.map);
+    // Add Satellite Aerial by default (Full natural color satellite view)
+    googleSatTiles.addTo(this.map);
 
     // Layer switcher control (Top-right pill)
     const baseLayers = {
-      "🛰️ Satellite Aerial": satelliteTiles,
+      "🛰️ Google Satellite": googleSatTiles,
+      "🌍 Esri Satellite": satelliteTiles,
       "🗺️ Road Streets": streetTiles,
       "🌙 Dark Canvas": darkTiles
     };
     L.control.layers(baseLayers, null, { position: 'topright' }).addTo(this.map);
 
-    // Breadcrumb trail polyline
+    // Breadcrumb trail polyline - Vivid Cyan / White on Colored Satellite
     this.trailPolyline = L.polyline([], {
-      color: '#00f5d4',
-      weight: 3,
-      opacity: 0.85
+      color: '#00e5ff',
+      weight: 4,
+      opacity: 0.95
     }).addTo(this.map);
 
-    // Custom Vehicle Icon with Directional Cone
+    // Custom Vehicle Icon with Directional Cone - High Contrast
     const vehicleIcon = L.divIcon({
       className: 'vehicle-leaflet-marker',
       html: `
         <div id="gps-vehicle-cone" class="gps-marker-cone">
-          <svg viewBox="0 0 40 40" width="36" height="36">
-            <polygon points="20,2 34,36 20,28 6,36" fill="#38bdf8" stroke="#0284c7" stroke-width="2"/>
-            <circle cx="20" cy="22" r="4" fill="#f59e0b"/>
+          <svg viewBox="0 0 40 40" width="38" height="38">
+            <polygon points="20,2 34,36 20,28 6,36" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+            <circle cx="20" cy="22" r="4.5" fill="#ef4444" stroke="#000000" stroke-width="1.5"/>
           </svg>
         </div>
       `,
-      iconSize: [36, 36],
-      iconAnchor: [18, 18]
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
     });
 
-    this.vehicleMarker = L.marker([25.0, 55.0], { icon: vehicleIcon }).addTo(this.map);
+    this.vehicleMarker = L.marker([this.defaultLat, this.defaultLon], { icon: vehicleIcon }).addTo(this.map);
   },
 
   bindEvents() {
     const btnCenter = document.getElementById('btn-gps-center');
     if (btnCenter) {
       btnCenter.addEventListener('click', () => {
-        if (this.hasGpsFix && this.map) {
-          this.map.panTo([this.lastLat, this.lastLon]);
+        if (this.map) {
+          const lat = this.hasGpsFix ? this.lastLat : this.defaultLat;
+          const lon = this.hasGpsFix ? this.lastLon : this.defaultLon;
+          this.map.panTo([lat, lon]);
           this.followVehicle = true;
         }
       });
@@ -171,7 +198,7 @@ const TelemetryHUD = {
         if (altEl && isFinite(alt)) altEl.textContent = alt.toFixed(1) + ' m';
         if (noteEl) noteEl.style.display = 'none';
 
-        // Update Leaflet marker safely
+        // Override vehicle marker position with live GPS coordinates
         if (this.vehicleMarker) {
           this.vehicleMarker.setLatLng([lat, lon]);
         }
@@ -194,8 +221,17 @@ const TelemetryHUD = {
           }
         }
       } else {
-        if (latEl) latEl.textContent = 'Searching... (NaN)';
-        if (lonEl) lonEl.textContent = 'Searching... (NaN)';
+        // No fix: If real fix hasn't occurred yet, display the default standby coordinates
+        if (!this.firstFixOccurred) {
+          if (latEl) latEl.textContent = `${this.defaultLat.toFixed(6)}° (Standby)`;
+          if (lonEl) lonEl.textContent = `${this.defaultLon.toFixed(6)}° (Standby)`;
+          if (this.vehicleMarker) {
+            this.vehicleMarker.setLatLng([this.defaultLat, this.defaultLon]);
+          }
+        } else {
+          if (latEl) latEl.textContent = `${this.lastLat.toFixed(6)}° (Lost)`;
+          if (lonEl) lonEl.textContent = `${this.lastLon.toFixed(6)}° (Lost)`;
+        }
         if (altEl) altEl.textContent = '--.- m';
         if (noteEl) noteEl.style.display = 'block';
       }
@@ -239,8 +275,8 @@ const TelemetryHUD = {
     });
   },
 
-  simBaseLat: 25.0705,
-  simBaseLon: 55.1403,
+  simBaseLat: 25.322608093519516,
+  simBaseLon: 55.48792024091055,
   simStep: 0,
 
   simulateIndoorFix() {

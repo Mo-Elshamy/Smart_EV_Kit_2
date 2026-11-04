@@ -39,6 +39,50 @@ const ROSBridge = {
       console.log('[ROSBridge] Connected successfully!');
       this.connected = true;
       this.updateStatus('CONNECTED', 'success');
+
+      // Install Rosbridge WebSocket Fragment Reassembler
+      // Large messages (like /map) get split into fragments by rosbridge
+      if (this.ros.socket && !this.ros.socket._hasFragmentInterceptor) {
+        this.ros.socket._hasFragmentInterceptor = true;
+        const origOnMessage = this.ros.socket.onmessage;
+        const fragmentStore = {};
+
+        this.ros.socket.onmessage = (event) => {
+          if (typeof event.data === 'string' && (event.data.indexOf('"op":"fragment"') !== -1 || event.data.indexOf('"op": "fragment"') !== -1)) {
+            try {
+              const frag = JSON.parse(event.data);
+              if (frag.op === 'fragment') {
+                const fid = frag.id || 'default';
+                if (!fragmentStore[fid]) {
+                  fragmentStore[fid] = new Array(frag.total);
+                }
+                fragmentStore[fid][frag.num] = frag.data;
+
+                // Check completeness
+                let isComplete = true;
+                for (let p = 0; p < frag.total; p++) {
+                  if (fragmentStore[fid][p] === undefined) {
+                    isComplete = false;
+                    break;
+                  }
+                }
+
+                if (isComplete) {
+                  const assembledStr = fragmentStore[fid].join('');
+                  delete fragmentStore[fid];
+                  // Deliver reassembled complete JSON message directly to ROSLIB handler
+                  origOnMessage.call(this.ros.socket, { data: assembledStr });
+                }
+                return;
+              }
+            } catch (err) {
+              console.warn('[ROSBridge] Fragment assembly error:', err);
+            }
+          }
+          origOnMessage.call(this.ros.socket, event);
+        };
+      }
+
       this.setupSubscriptions();
       this.notifyListeners('connection', true);
     });

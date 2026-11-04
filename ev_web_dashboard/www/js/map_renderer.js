@@ -59,7 +59,7 @@ const MapRenderer = {
     touchStartDist: 0,
     theta: 0.8,       // Azimuth around Z (radians)
     phi: 1.05,        // Polar tilt from +Z (radians, ~60 deg isometric)
-    radius: 14.0,     // Distance from target
+    radius: 9.0,      // Comfortable distance from vehicle (9 meters)
     target: { x: 0, y: 0, z: 0.3 }
   },
 
@@ -107,7 +107,7 @@ const MapRenderer = {
 
     // 1. Scene & Camera (ROS standard: Z is UP)
     this.scene3D = new THREE.Scene();
-    this.scene3D.background = new THREE.Color(0x0a0f1d); // Deep cosmic slate
+    this.scene3D.background = new THREE.Color(0x0a0a0a); // Deep pure black
 
     this.camera3D = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
     this.camera3D.up.set(0, 0, 1); // Set Z as vertical axis in Three.js
@@ -123,15 +123,15 @@ const MapRenderer = {
     this.renderer3D.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
     // 3. Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
     this.scene3D.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0x38bdf8, 0.6);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
     dirLight.position.set(10, -10, 20);
     this.scene3D.add(dirLight);
 
-    // 4. Ground Grid (XY Plane)
-    const gridHelper = new THREE.GridHelper(40, 40, 0x38bdf8, 0x1e293b);
+    // 4. Ground Grid (XY Plane) - Crisp Monochrome
+    const gridHelper = new THREE.GridHelper(40, 40, 0x444444, 0x1f1f1f);
     gridHelper.rotation.x = Math.PI / 2; // Lie flat on XY plane
     gridHelper.position.z = -0.02;
     this.scene3D.add(gridHelper);
@@ -139,16 +139,16 @@ const MapRenderer = {
     // 5. Vehicle 3D Representation
     const carGroup = new THREE.Group();
 
-    // Buggy Chassis
+    // Buggy Chassis - Crisp White
     const bodyGeo = new THREE.BoxGeometry(1.0, 0.6, 0.25);
-    const bodyMat = new THREE.MeshPhongMaterial({ color: 0x0284c7, wireframe: false });
+    const bodyMat = new THREE.MeshPhongMaterial({ color: 0xffffff, wireframe: false });
     const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
     bodyMesh.position.set(0, 0, 0.15);
     carGroup.add(bodyMesh);
 
-    // Cabin / Roll cage roof
+    // Cabin / Roll cage roof - Contrasting Black/Charcoal
     const roofGeo = new THREE.BoxGeometry(0.5, 0.5, 0.2);
-    const roofMat = new THREE.MeshPhongMaterial({ color: 0x0369a1 });
+    const roofMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
     const roofMesh = new THREE.Mesh(roofGeo, roofMat);
     roofMesh.position.set(-0.05, 0, 0.32);
     carGroup.add(roofMesh);
@@ -156,7 +156,7 @@ const MapRenderer = {
     // 4 Wheels
     const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 12);
     wheelGeo.rotateX(Math.PI / 2);
-    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
     const wheelOffsets = [
       [0.35, 0.32, 0.12],
       [0.35, -0.32, 0.12],
@@ -169,10 +169,10 @@ const MapRenderer = {
       carGroup.add(wheel);
     });
 
-    // Heading Arrow (Points forward along +X)
+    // Heading Arrow (Points forward along +X) - High contrast White
     const coneGeo = new THREE.ConeGeometry(0.14, 0.35, 10);
     coneGeo.rotateZ(-Math.PI / 2); // Rotate cone apex to point along +X
-    const coneMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    const coneMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const coneMesh = new THREE.Mesh(coneGeo, coneMat);
     coneMesh.position.set(0.68, 0, 0.15);
     carGroup.add(coneMesh);
@@ -184,14 +184,16 @@ const MapRenderer = {
     this.robotMesh3D = carGroup;
     this.scene3D.add(this.robotMesh3D);
 
-    // 6. Live LiDAR Scan Ring (Current Sweep at z = 0.45m)
+    // 6. Live LiDAR Scan Ring (Current Sweep at z = 0.45m) - Crisp White Points
     const liveGeo = new THREE.BufferGeometry();
     liveGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_LIVE_SCAN_POINTS * 3), 3));
+    liveGeo.setDrawRange(0, 0);
     const liveMat = new THREE.PointsMaterial({
-      color: 0x00f5d4,
-      size: 0.10,
+      color: 0xffffff,
+      size: 4.0,
+      sizeAttenuation: false,
       transparent: true,
-      opacity: 0.95
+      opacity: 1.0
     });
     this.lidarPoints3D = new THREE.Points(liveGeo, liveMat);
     this.scene3D.add(this.lidarPoints3D);
@@ -202,10 +204,11 @@ const MapRenderer = {
     accumGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ACCUM_POINTS * 3), 3));
     accumGeo.setDrawRange(0, 0);
     const accumMat = new THREE.PointsMaterial({
-      size: 0.07,
+      size: 3.0,
+      sizeAttenuation: false,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85
+      opacity: 0.90
     });
     this.lidarAccumPoints3D = new THREE.Points(accumGeo, accumMat);
     this.scene3D.add(this.lidarAccumPoints3D);
@@ -216,7 +219,8 @@ const MapRenderer = {
     obsGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_OBSTACLE_POINTS * 3), 3));
     obsGeo.setDrawRange(0, 0);
     const obsMat = new THREE.PointsMaterial({
-      size: 0.09,
+      size: 3.5,
+      sizeAttenuation: false,
       vertexColors: true,
       transparent: true,
       opacity: 0.90
@@ -230,7 +234,8 @@ const MapRenderer = {
     zedGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_POINTS * 3), 3));
     zedGeo.setDrawRange(0, 0);
     const zedMat = new THREE.PointsMaterial({
-      size: 0.05,
+      size: 3.0,
+      sizeAttenuation: false,
       vertexColors: true,
       transparent: true,
       opacity: 0.95
@@ -239,7 +244,21 @@ const MapRenderer = {
     this.scene3D.add(this.zedPoints3D);
 
     this.is3DInitialized = true;
+    this.resize3D();
+    window.addEventListener('resize', () => {
+      this.resize2D();
+      this.resize3D();
+    });
     this.animate3D();
+  },
+
+  resize3D() {
+    if (!this.canvas3D || !this.canvas3D.parentElement || !this.renderer3D || !this.camera3D) return;
+    const rect = this.canvas3D.parentElement.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    this.camera3D.aspect = rect.width / rect.height;
+    this.camera3D.updateProjectionMatrix();
+    this.renderer3D.setSize(rect.width, rect.height);
   },
 
   update3DCamera() {
@@ -452,29 +471,32 @@ const MapRenderer = {
       });
     }
 
-    // Save 2D Map (.yaml + .pgm + PNG download)
+    // Save 2D Map (.yaml + .pgm + .png downloaded to device + saved on Jetson)
     const btnSave2D = document.getElementById('btn-save-2d');
     if (btnSave2D) {
       btnSave2D.addEventListener('click', () => {
         const defaultName = 'ev_map_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const mapName = prompt('Enter map filename (will save to ~/ev_ws/maps/ and download PNG):', defaultName);
+        const mapName = prompt('Enter map filename (will download .png, .yaml, .pgm to this device & save to Jetson disk):', defaultName);
         if (!mapName) return;
 
-        this.showToast('Saving map to Jetson disk...', 'info');
-        this.download2DMapPNG(mapName);
+        this.showToast('Downloading 2D map to this device & saving to Jetson...', 'info');
+        this.download2DMapPackage(mapName);
         if (window.ROSBridge && window.ROSBridge.save2DMap) {
           window.ROSBridge.save2DMap(mapName, (success, msg) => {
-            this.showToast(msg, success ? 'success' : 'error');
+            this.showToast('Jetson: ' + msg, success ? 'success' : 'info');
           });
         }
       });
     }
 
-    // Export 3D Mesh (.obj file)
+    // Export 3D Mesh (.obj file directly to operating device)
     const btnExport3D = document.getElementById('btn-export-3d');
     if (btnExport3D) {
       btnExport3D.addEventListener('click', () => {
-        this.export3DToOBJ();
+        const defaultName = 'ev_map_3d_' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const modelName = prompt('Enter 3D model filename (will download .obj file to this device):', defaultName);
+        if (!modelName) return;
+        this.export3DToOBJ(modelName);
       });
     }
 
@@ -597,28 +619,41 @@ const MapRenderer = {
     const imgData = offCtx.createImageData(width, height);
     const data = msg.data;
 
-    for (let i = 0; i < data.length; i++) {
-      const val = data[i];
-      const p = i * 4;
+    // Map ROS rows (y=0 at bottom) to standard Canvas rows (y=0 at top)
+    // Normal ROS Map Scheme: White Free Space (0), Black Walls/Obstacles (100), Gray Unknown (-1)
+    for (let y = 0; y < height; y++) {
+      const rosRow = y * width;
+      const canvasRow = (height - 1 - y) * width;
+      for (let x = 0; x < width; x++) {
+        const val = data[rosRow + x];
+        const p = (canvasRow + x) * 4;
 
-      if (val === -1) {
-        // Unknown: soft dark slate/blue
-        imgData.data[p] = 20;
-        imgData.data[p + 1] = 27;
-        imgData.data[p + 2] = 45;
-        imgData.data[p + 3] = 210;
-      } else if (val === 0) {
-        // Free space: crisp light gray
-        imgData.data[p] = 226;
-        imgData.data[p + 1] = 232;
-        imgData.data[p + 2] = 240;
-        imgData.data[p + 3] = 255;
-      } else {
-        // Occupied/obstacle: deep charcoal black
-        imgData.data[p] = 15;
-        imgData.data[p + 1] = 23;
-        imgData.data[p + 2] = 42;
-        imgData.data[p + 3] = 255;
+        if (val === -1) {
+          // Unknown space: Standard ROS neutral gray
+          imgData.data[p] = 128;
+          imgData.data[p + 1] = 128;
+          imgData.data[p + 2] = 128;
+          imgData.data[p + 3] = 255;
+        } else if (val === 0) {
+          // Free space: Normal clean pure white
+          imgData.data[p] = 255;
+          imgData.data[p + 1] = 255;
+          imgData.data[p + 2] = 255;
+          imgData.data[p + 3] = 255;
+        } else if (val >= 65) {
+          // Occupied obstacle / wall: Normal pure black
+          imgData.data[p] = 0;
+          imgData.data[p + 1] = 0;
+          imgData.data[p + 2] = 0;
+          imgData.data[p + 3] = 255;
+        } else {
+          // Intermediate probability (1-64): Grayscale gradient
+          const gray = Math.round(255 - (val / 100.0) * 255);
+          imgData.data[p] = gray;
+          imgData.data[p + 1] = gray;
+          imgData.data[p + 2] = gray;
+          imgData.data[p + 3] = 255;
+        }
       }
     }
 
@@ -703,11 +738,12 @@ const MapRenderer = {
             posArr[pIdx + 1] = wy;
             posArr[pIdx + 2] = wz;
 
-            // Height-based cyberpunk neon gradient (Cyan -> Electric Blue)
+            // Height-based monochrome gradient (Dark Silver -> Pure Brilliant White)
             const t = wz / 0.70;
-            colArr[pIdx] = 0.05 + 0.15 * t;      // R
-            colArr[pIdx + 1] = 0.95 - 0.25 * t;  // G
-            colArr[pIdx + 2] = 0.85 + 0.15 * t;  // B
+            const intensity = 0.55 + 0.45 * t;
+            colArr[pIdx] = intensity;      // R
+            colArr[pIdx + 1] = intensity;  // G
+            colArr[pIdx + 2] = intensity;  // B
 
             pIdx += 3;
           }
@@ -733,12 +769,13 @@ const MapRenderer = {
     const ranges = msg.ranges;
     let liveIdx = 0;
 
-    // Check if buggy has moved enough to accumulate world points
+    // Check if buggy has moved enough to accumulate world points (or populate initial buffer)
     const dist = this.lastAccumPose.x === null ? 999 :
       Math.hypot(this.robotPose.x - this.lastAccumPose.x, this.robotPose.y - this.lastAccumPose.y);
     const dYaw = this.lastAccumPose.yaw === null ? 999 :
       Math.abs(this.robotPose.yaw - this.lastAccumPose.yaw);
-    const shouldAccumulate = (dist > 0.05 || dYaw > 0.04);
+    const isInitialSweep = this.accumCount < 2000;
+    const shouldAccumulate = isInitialSweep || (dist > 0.05 || dYaw > 0.04);
 
     if (shouldAccumulate) {
       this.lastAccumPose.x = this.robotPose.x;
@@ -749,13 +786,24 @@ const MapRenderer = {
     const accumPosAttr = this.lidarAccumPoints3D ? this.lidarAccumPoints3D.geometry.attributes.position : null;
     const accumColAttr = this.lidarAccumPoints3D ? this.lidarAccumPoints3D.geometry.attributes.color : null;
 
+    // Physical mount offset on buggy (URDF laser_joint: -0.77m, 0m, 0.95m)
+    const laserMountX = -0.77;
+    const laserMountY = 0.00;
+    const laserMountZ = 0.95;
+    const cosY = Math.cos(this.robotPose.yaw);
+    const sinY = Math.sin(this.robotPose.yaw);
+
     for (let i = 0; i < ranges.length; i += 2) {
       const r = ranges[i];
       if (r >= msg.range_min && r <= msg.range_max) {
-        const angle = angleMin + i * angleInc + this.robotPose.yaw;
-        const wx = this.robotPose.x + r * Math.cos(angle);
-        const wy = this.robotPose.y + r * Math.sin(angle);
-        const wz = 0.45; // RPLIDAR S3 mount height
+        const localAngle = angleMin + i * angleInc;
+        // Transform from laser frame to base_link
+        const bx = laserMountX + r * Math.cos(localAngle);
+        const by = laserMountY + r * Math.sin(localAngle);
+        // Transform from base_link to world frame
+        const wx = this.robotPose.x + bx * cosY - by * sinY;
+        const wy = this.robotPose.y + bx * sinY + by * cosY;
+        const wz = laserMountZ;
 
         // 1. Live sweep ring
         if (liveIdx < livePos.length - 3) {
@@ -769,12 +817,12 @@ const MapRenderer = {
           const aIdx = (this.accumIndex % this.MAX_ACCUM_POINTS) * 3;
           accumPosAttr.array[aIdx] = wx;
           accumPosAttr.array[aIdx + 1] = wy;
-          accumPosAttr.array[aIdx + 2] = wz + (Math.random() - 0.5) * 0.04; // Micro depth texture
+          accumPosAttr.array[aIdx + 2] = wz + (Math.random() - 0.5) * 0.03;
 
-          // Color: bright neon cyan/green
-          accumColAttr.array[aIdx] = 0.00;     // R
+          // Color: Crisp monochrome white/silver point
+          accumColAttr.array[aIdx] = 0.90;     // R
           accumColAttr.array[aIdx + 1] = 0.90; // G
-          accumColAttr.array[aIdx + 2] = 0.65; // B
+          accumColAttr.array[aIdx + 2] = 0.90; // B
 
           this.accumIndex++;
           if (this.accumCount < this.MAX_ACCUM_POINTS) {
@@ -784,10 +832,8 @@ const MapRenderer = {
       }
     }
 
-    // Zero out unused points in live sweep
-    for (let i = liveIdx; i < livePos.length; i++) {
-      livePos[i] = 0;
-    }
+    // Set precise draw range for live scan ring
+    this.lidarPoints3D.geometry.setDrawRange(0, liveIdx / 3);
     this.lidarPoints3D.geometry.attributes.position.needsUpdate = true;
 
     // Update accumulated buffer draw range
@@ -866,10 +912,10 @@ const MapRenderer = {
     const cosY = Math.cos(this.robotPose.yaw);
     const sinY = Math.sin(this.robotPose.yaw);
 
-    // ZED 2i physical mount offset on buggy (URDF camera_joint: 1.25m, 0m, 0.35m)
-    const camMountX = 1.25;
+    // ZED 2i physical mount offset on buggy (URDF camera_joint: 0.67m, 0m, 0.36m)
+    const camMountX = 0.67;
     const camMountY = 0.00;
-    const camMountZ = 0.35;
+    const camMountZ = 0.36;
 
     let pIdx = 0;
 
@@ -952,23 +998,22 @@ const MapRenderer = {
     this.drawWorldGrid(ctx);
 
     // 2. Draw 2D Occupancy Grid Map
-    if (this.mapData && this.mapOffscreenCanvas) {
+    if (this.mapData && this.mapOffscreenCanvas && this.mapOffscreenCanvas.width > 0) {
       const info = this.mapData.info;
       const origin = info.origin.position;
       const res = info.resolution;
+      const drawW = info.width * res * this.scale;
+      const drawH = info.height * res * this.scale;
+      const drawX = origin.x * this.scale;
+      const drawY = -(origin.y + info.height * res) * this.scale;
 
-      ctx.save();
-      // ROS Map origin is in world coordinates; invert Y for screen coords
-      ctx.scale(this.scale * res, -this.scale * res);
-      ctx.translate(origin.x / res, -origin.y / res - this.mapOffscreenCanvas.height);
-      ctx.drawImage(this.mapOffscreenCanvas, 0, 0);
-      ctx.restore();
+      ctx.drawImage(this.mapOffscreenCanvas, drawX, drawY, drawW, drawH);
     }
 
     // 3. Draw Vehicle Trajectory Trail
     if (this.poseTrail.length > 1) {
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2.0;
+      ctx.strokeStyle = '#2563eb'; // High contrast vivid blue on white & black map
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
       for (let i = 0; i < this.poseTrail.length; i++) {
         const pt = this.poseTrail[i];
@@ -986,16 +1031,24 @@ const MapRenderer = {
       const angleMin = scan.angle_min;
       const angleInc = scan.angle_increment;
       const ranges = scan.ranges;
+      const laserMountX = -0.77;
+      const laserMountY = 0.00;
+      const cosY = Math.cos(this.robotPose.yaw);
+      const sinY = Math.sin(this.robotPose.yaw);
 
-      ctx.fillStyle = '#00f5d4'; // Bright Cyan
+      ctx.fillStyle = '#ef4444'; // Classic RViz Laser Red (high visibility on white free space & black walls)
       for (let i = 0; i < ranges.length; i++) {
         const r = ranges[i];
         if (r >= scan.range_min && r <= scan.range_max) {
-          const angle = angleMin + i * angleInc + this.robotPose.yaw;
-          const px = (this.robotPose.x + r * Math.cos(angle)) * this.scale;
-          const py = -(this.robotPose.y + r * Math.sin(angle)) * this.scale;
+          const localAngle = angleMin + i * angleInc;
+          const bx = laserMountX + r * Math.cos(localAngle);
+          const by = laserMountY + r * Math.sin(localAngle);
+          const wx = this.robotPose.x + bx * cosY - by * sinY;
+          const wy = this.robotPose.y + bx * sinY + by * cosY;
+          const px = wx * this.scale;
+          const py = -wy * this.scale;
           ctx.beginPath();
-          ctx.arc(px, py, 2.0, 0, Math.PI * 2);
+          ctx.arc(px, py, 2.2, 0, Math.PI * 2);
           ctx.fill();
         }
       }
@@ -1009,7 +1062,7 @@ const MapRenderer = {
 
   drawWorldGrid(ctx) {
     const gridSize = 1.0 * this.scale; // 1 meter per major line
-    ctx.strokeStyle = '#1e293b';
+    ctx.strokeStyle = '#222222';
     ctx.lineWidth = 1;
 
     const startX = -this.panX;
@@ -1034,36 +1087,36 @@ const MapRenderer = {
     ctx.translate(x, y);
     ctx.rotate(-yaw); // Invert yaw because screen Y is inverted
 
-    // Vehicle chassis box
     const length = 1.2 * this.scale;
     const width = 0.7 * this.scale;
 
-    ctx.fillStyle = '#0284c7'; // Sky Blue
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2;
-
-    ctx.beginPath();
-    ctx.roundRect(-length * 0.3, -width / 2, length, width, 4);
-    ctx.fill();
-    ctx.stroke();
-
-    // Directional triangle pointer
-    ctx.fillStyle = '#f59e0b'; // Gold
-    ctx.beginPath();
-    ctx.moveTo(length * 0.7, 0);
-    ctx.lineTo(length * 0.4, -width * 0.3);
-    ctx.lineTo(length * 0.4, width * 0.3);
-    ctx.closePath();
-    ctx.fill();
-
     // Wheels
-    ctx.fillStyle = '#0f172a';
+    ctx.fillStyle = '#111111';
     const wheelW = width * 0.25;
     const wheelL = length * 0.3;
     ctx.fillRect(length * 0.3, -width / 2 - 3, wheelL, wheelW);
     ctx.fillRect(length * 0.3, width / 2 - wheelW + 3, wheelL, wheelW);
     ctx.fillRect(-length * 0.25, -width / 2 - 3, wheelL, wheelW);
     ctx.fillRect(-length * 0.25, width / 2 - wheelW + 3, wheelL, wheelW);
+
+    // Vehicle chassis box - Contrasting Dark Body with Sharp White Border
+    ctx.fillStyle = '#0f172a'; // Slate deep chassis
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.0;
+
+    ctx.beginPath();
+    ctx.roundRect(-length * 0.3, -width / 2, length, width, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    // Directional triangle pointer - Crisp White / High Visibility
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(length * 0.7, 0);
+    ctx.lineTo(length * 0.4, -width * 0.3);
+    ctx.lineTo(length * 0.4, width * 0.3);
+    ctx.closePath();
+    ctx.fill();
 
     ctx.restore();
   },
@@ -1089,33 +1142,91 @@ const MapRenderer = {
     }, 4000);
   },
 
-  download2DMapPNG(filename) {
-    if (!this.mapOffscreenCanvas || this.mapOffscreenCanvas.width === 0) {
+  // Download complete 2D map package (.png + .yaml + .pgm) to operating device
+  download2DMapPackage(filename) {
+    if (!this.mapData || !this.mapOffscreenCanvas || this.mapOffscreenCanvas.width === 0) {
       this.showToast('No 2D occupancy grid data to export yet', 'warning');
       return;
     }
     const name = (filename || 'ev_map_2d_' + Date.now()).trim();
-    this.mapOffscreenCanvas.toBlob((blob) => {
-      if (!blob) return;
+    const info = this.mapData.info;
+    const { width, height, resolution } = info;
+    const origin = info.origin.position;
+    const data = this.mapData.data;
+
+    const triggerDownload = (blob, ext) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${name}.png`;
+      a.download = `${name}.${ext}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      this.showToast(`✓ Downloaded ${name}.png`, 'success');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+
+    // 1. Download visual PNG image to operating device
+    this.mapOffscreenCanvas.toBlob((pngBlob) => {
+      if (pngBlob) {
+        triggerDownload(pngBlob, 'png');
+      }
     });
+
+    // 2. Download ROS 2 YAML metadata file to operating device
+    setTimeout(() => {
+      const yamlContent = `image: ${name}.pgm
+mode: trinary
+resolution: ${resolution.toFixed(4)}
+origin: [${origin.x.toFixed(4)}, ${origin.y.toFixed(4)}, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.25
+`;
+      const yamlBlob = new Blob([yamlContent], { type: 'text/yaml;charset=utf-8' });
+      triggerDownload(yamlBlob, 'yaml');
+    }, 250);
+
+    // 3. Download ROS 2 PGM binary map file to operating device
+    setTimeout(() => {
+      const pgmHeader = `P5\n${width} ${height}\n255\n`;
+      const headerBytes = new TextEncoder().encode(pgmHeader);
+      const pgmBytes = new Uint8Array(headerBytes.length + width * height);
+      pgmBytes.set(headerBytes, 0);
+
+      let offset = headerBytes.length;
+      for (let y = 0; y < height; y++) {
+        const rosRow = (height - 1 - y) * width;
+        for (let x = 0; x < width; x++) {
+          const val = data[rosRow + x];
+          let p;
+          if (val === -1) {
+            p = 205; // ROS standard unknown
+          } else if (val === 0) {
+            p = 254; // ROS standard free space
+          } else if (val >= 65) {
+            p = 0;   // ROS standard obstacle
+          } else {
+            p = Math.round(254 - (val / 100.0) * 254);
+          }
+          pgmBytes[offset++] = p;
+        }
+      }
+
+      const pgmBlob = new Blob([pgmBytes], { type: 'image/x-portable-graymap' });
+      triggerDownload(pgmBlob, 'pgm');
+      this.showToast(`✓ Downloaded ${name}.png, .yaml, and .pgm to this device!`, 'success');
+    }, 500);
   },
 
-  export3DToOBJ() {
+  // Export 3D Mesh (.obj file) directly to operating device
+  export3DToOBJ(filename) {
     if (typeof THREE === 'undefined') {
       this.showToast('Three.js not loaded', 'error');
       return;
     }
 
-    let objText = "# Wavefront OBJ exported from Smart EV Buggy 3D SLAM\n# Vertices and obstacle geometry\n\n";
+    const name = (filename || 'ev_map_3d_' + Date.now()).trim();
+    let objText = `# Wavefront OBJ exported from Smart EV Buggy 3D SLAM\n# Created: ${new Date().toISOString()}\n\n`;
     let vertCount = 0;
 
     const appendGeometry = (geom, matrix) => {
@@ -1156,25 +1267,31 @@ const MapRenderer = {
       appendGeometry(this.mapMesh3D.geometry, this.mapMesh3D.matrixWorld);
     }
 
-    // 2. Export 3D Obstacle Columns (InstancedMesh)
-    if (this.mapObstacles3D && this.mapObstacles3D.count > 0) {
-      objText += "g Obstacles\n";
-      const boxGeom = this.mapObstacles3D.geometry;
-      const mat = new THREE.Matrix4();
-      const instCount = Math.min(this.mapObstacles3D.count, 5000);
-      for (let i = 0; i < instCount; i++) {
-        this.mapObstacles3D.getMatrixAt(i, mat);
-        appendGeometry(boxGeom, mat);
+    // 2. Export 3D Obstacle Walls
+    if (this.mapObstacles3D && this.mapObstacles3D.geometry) {
+      const posAttr = this.mapObstacles3D.geometry.getAttribute('position');
+      const drawCount = this.mapObstacles3D.geometry.drawRange.count || (posAttr ? posAttr.count : 0);
+      if (posAttr && drawCount > 0) {
+        objText += "g Obstacles\n";
+        const v = new THREE.Vector3();
+        for (let i = 0; i < drawCount; i++) {
+          v.fromBufferAttribute(posAttr, i);
+          if (v.x !== 0 || v.y !== 0 || v.z !== 0) {
+            objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
+            vertCount++;
+          }
+        }
       }
     }
 
     // 3. Export Accumulated LiDAR Point Cloud (as vertices)
     if (this.lidarAccumPoints3D && this.lidarAccumPoints3D.geometry) {
       const posAttr = this.lidarAccumPoints3D.geometry.getAttribute('position');
-      if (posAttr && posAttr.count > 0) {
+      const drawCount = this.lidarAccumPoints3D.geometry.drawRange.count || (posAttr ? posAttr.count : 0);
+      if (posAttr && drawCount > 0) {
         objText += "g LidarPointCloud\n";
         const v = new THREE.Vector3();
-        for (let i = 0; i < posAttr.count; i++) {
+        for (let i = 0; i < drawCount; i++) {
           v.fromBufferAttribute(posAttr, i);
           if (v.x !== 0 || v.y !== 0 || v.z !== 0) {
             objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
@@ -1189,16 +1306,16 @@ const MapRenderer = {
       return;
     }
 
-    const blob = new Blob([objText], { type: 'text/plain' });
+    const blob = new Blob([objText], { type: 'model/obj;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ev_map_3d_${Date.now()}.obj`;
+    a.download = `${name}.obj`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    this.showToast(`✓ Exported ${vertCount} vertices to 3D OBJ file`, 'success');
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    this.showToast(`✓ Exported ${name}.obj (${vertCount} vertices) to this device!`, 'success');
   }
 };
 

@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/vendor/leaflet.css">
 
   <!-- Custom Glassmorphic Dark Theme -->
-  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/dashboard.css?v=2.5">
 </head>
 <body>
 
@@ -18,10 +18,11 @@
   <!-- ===================================================================== -->
   <header class="top-status-bar">
     <div class="brand-section">
-      <svg class="brand-logo-icon" viewBox="0 0 24 24">
-        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/>
-      </svg>
-      <span class="brand-title">SMART EV COMMAND CENTER</span>
+      <img src="assets/rq_logo_white.png" alt="RQ Science & Technology" class="brand-logo-img">
+      <div class="brand-text-block">
+        <span class="brand-title">SMART EV COMMAND CENTER</span>
+        <span class="brand-subtitle">RQ SCIENCE & TECHNOLOGY</span>
+      </div>
     </div>
 
     <div class="stats-section">
@@ -67,13 +68,21 @@
       </div>
       <div class="camera-module-content">
         <!-- RGB Camera Feed -->
-        <div class="video-feed-box">
-          <img id="camera-stream-rgb" src="" alt="Connecting to ZED 2i RGB Feed...">
+        <div class="video-feed-box" id="box-camera-rgb">
+          <div class="feed-spinner" id="spinner-camera-rgb">
+            <div class="spinner-icon"></div>
+            <span class="spinner-text">Connecting to RGB Feed...</span>
+          </div>
+          <img id="camera-stream-rgb" src="" alt="RGB Feed">
           <div class="feed-label-tag">ZED 2i — RGB Stream</div>
         </div>
         <!-- CUDA Depth Map Feed -->
-        <div class="video-feed-box">
-          <img id="camera-stream-depth" src="" alt="Connecting to ZED 2i Depth Feed...">
+        <div class="video-feed-box" id="box-camera-depth">
+          <div class="feed-spinner" id="spinner-camera-depth">
+            <div class="spinner-icon"></div>
+            <span class="spinner-text">Connecting to Depth Feed...</span>
+          </div>
+          <img id="camera-stream-depth" src="" alt="Depth Feed">
           <div class="feed-label-tag">ZED 2i — Depth Image</div>
         </div>
       </div>
@@ -155,12 +164,12 @@
           <div class="hud-widget gps-info-strip">
             <span class="hud-widget-title">GNSS Readout</span>
             <div><span>Status: </span><strong id="hud-gps-status" class="badge-fix-none">NO FIX (INDOORS)</strong></div>
-            <div><span>Stream: </span><strong id="hud-gps-stream" style="color:#94a3b8;">Waiting for data...</strong></div>
-            <div><span>Packets: </span><strong id="hud-gps-packets" style="color:#38bdf8;">0 received</strong></div>
+            <div><span>Stream: </span><strong id="hud-gps-stream" style="color:#888888;">Waiting for data...</strong></div>
+            <div><span>Packets: </span><strong id="hud-gps-packets" style="color:#ffffff;">0 received</strong></div>
             <div><span>Lat: </span><strong id="hud-gps-lat">0.000000°</strong></div>
             <div><span>Lon: </span><strong id="hud-gps-lon">0.000000°</strong></div>
             <div><span>Alt: </span><strong id="hud-gps-alt">0.0 m</strong></div>
-            <div id="hud-gps-note" style="margin-top:6px; font-size:0.72rem; color:#f59e0b; line-height:1.3;">Indoors: Click "Simulate Fix" above to test real-world map & heading tracking.</div>
+            <div id="hud-gps-note" style="margin-top:6px; font-size:0.72rem; color:#aaaaaa; line-height:1.3;">Indoors: Click "Simulate Fix" above to test real-world map & heading tracking.</div>
           </div>
         </div>
       </div>
@@ -195,9 +204,9 @@
   <script src="js/vendor/leaflet.js"></script>
 
   <!-- Smart EV Dashboard Core Modules -->
-  <script src="js/ros_bridge.js"></script>
-  <script src="js/map_renderer.js"></script>
-  <script src="js/telemetry_hud.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/ros_bridge.js?v=2.5"></script>
+  <script src="js/map_renderer.js?v=2.5"></script>
+  <script src="js/telemetry_hud.js?v=2.5"></script>
+  <script src="js/app.js?v=2.5"></script>
 </body>
 </html>

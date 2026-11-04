@@ -25,10 +25,12 @@ def generate_launch_description():
         executable='web_video_server',
         name='web_video_server',
         output='screen',
+        respawn=True,
+        respawn_delay=2.0,
         parameters=[{
             'port': LaunchConfiguration('video_server_port'),
             'address': LaunchConfiguration('video_server_address'),
-            'server_threads': 2
+            'server_threads': 4
         }]
     )
 
@@ -37,12 +39,15 @@ def generate_launch_description():
         executable='rosbridge_websocket',
         name='rosbridge_websocket',
         output='screen',
+        respawn=True,
+        respawn_delay=2.0,
         parameters=[{
             'port': LaunchConfiguration('rosbridge_port'),
             'address': '0.0.0.0',
             'ssl': False,
             'retry_startup_delay': 2.0,
-            'use_compression': False
+            'use_compression': False,
+            'max_message_size': 50000000
         }]
     )
 

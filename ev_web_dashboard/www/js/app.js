@@ -32,31 +32,52 @@ function setupVideoFeeds() {
   const host = window.location.hostname || 'localhost';
   const videoPort = 8080;
 
-  // Primary topics from Stage 4
+  // Primary topics from Stage 4 (using ros_compressed for zero Jetson CPU overhead)
   const rgbTopic = '/zed/zed_node/rgb/color/rect/image';
   const depthTopic = '/zed/zed_node/image/depth_image';
 
   const rgbImg = document.getElementById('camera-stream-rgb');
   const depthImg = document.getElementById('camera-stream-depth');
+  const rgbSpinner = document.getElementById('spinner-camera-rgb');
+  const depthSpinner = document.getElementById('spinner-camera-depth');
+
+  const rgbUrl = `http://${host}:${videoPort}/stream?topic=${rgbTopic}&type=ros_compressed`;
+  const depthUrl = `http://${host}:${videoPort}/stream?topic=${depthTopic}&type=ros_compressed`;
 
   if (rgbImg) {
-    rgbImg.src = `http://${host}:${videoPort}/stream?topic=${rgbTopic}&type=mjpeg&width=640&height=360`;
+    rgbImg.onload = () => {
+      if (rgbSpinner) rgbSpinner.style.display = 'none';
+    };
     rgbImg.onerror = () => {
       console.warn('[Video] RGB stream reconnecting...');
+      if (rgbSpinner) {
+        rgbSpinner.style.display = 'flex';
+        const txt = rgbSpinner.querySelector('.spinner-text');
+        if (txt) txt.textContent = 'Reconnecting RGB Feed...';
+      }
       setTimeout(() => {
-        rgbImg.src = `http://${host}:${videoPort}/stream?topic=${rgbTopic}&type=mjpeg&width=640&height=360&t=${Date.now()}`;
-      }, 3000);
+        rgbImg.src = `${rgbUrl}&t=${Date.now()}`;
+      }, 2000);
     };
+    rgbImg.src = rgbUrl;
   }
 
   if (depthImg) {
-    depthImg.src = `http://${host}:${videoPort}/stream?topic=${depthTopic}&type=mjpeg&width=640&height=360`;
+    depthImg.onload = () => {
+      if (depthSpinner) depthSpinner.style.display = 'none';
+    };
     depthImg.onerror = () => {
       console.warn('[Video] Depth stream reconnecting...');
+      if (depthSpinner) {
+        depthSpinner.style.display = 'flex';
+        const txt = depthSpinner.querySelector('.spinner-text');
+        if (txt) txt.textContent = 'Reconnecting Depth Feed...';
+      }
       setTimeout(() => {
-        depthImg.src = `http://${host}:${videoPort}/stream?topic=${depthTopic}&type=mjpeg&width=640&height=360&t=${Date.now()}`;
-      }, 3000);
+        depthImg.src = `${depthUrl}&t=${Date.now()}`;
+      }, 2000);
     };
+    depthImg.src = depthUrl;
   }
 }
 
@@ -85,6 +106,7 @@ function setupMobileNavigation() {
       setTimeout(() => {
         if (window.MapRenderer) {
           window.MapRenderer.resize2D();
+          window.MapRenderer.resize3D();
         }
         if (window.TelemetryHUD && window.TelemetryHUD.map) {
           window.TelemetryHUD.map.invalidateSize();
