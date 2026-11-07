@@ -24,7 +24,10 @@
       publish_depth_image: true     # Advertise colorized depth image for visual RViz view
 
     pos_tracking:
-      pos_tracking_enabled: true    # Compute visual odometry
+      pos_tracking_enabled: true    # Compute visual-inertial odometry (VIO)
+      imu_fusion: true              # Fuse ZED internal BMI085 IMU with visual odometry
+      two_d_mode: true              # Constrain VIO to 2D ground plane (prevents pitch/roll wobble from drifting X/Y)
+      fixed_z_value: 0.0
       publish_tf: false             # Set to false: robot_localization EKF manages odom -> base_link
       publish_map_tf: false         # Set to false: slam_toolbox manages map -> odom
       publish_imu_tf: false

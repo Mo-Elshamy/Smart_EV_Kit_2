@@ -23,11 +23,11 @@ slam_toolbox:
     debug_logging: false
     throttle_scans: 1
     transform_publish_period: 0.02      # 50 Hz transform publishing
-    map_update_interval: 2.0            # Update /map occupancy grid every 2.0 seconds
+    map_update_interval: 1.5            # Update /map occupancy grid every 1.5 seconds
     resolution: 0.05                    # 5cm grid cell resolution
-    min_laser_range: 0.1
-    max_laser_range: 25.0               # Tuned for RPLIDAR S3 25m range
-    minimum_time_interval: 0.2
+    min_laser_range: 0.15
+    max_laser_range: 12.0               # Clamped to 12m to reject long doorway/window starburst rays
+    minimum_time_interval: 0.15
     transform_timeout: 0.2
     tf_buffer_duration: 30.0
     stack_size_to_use: 40000000         # 40MB Ceres solver stack size
@@ -35,12 +35,12 @@ slam_toolbox:
 
     # Scan Matching & Motion Thresholds
     use_scan_matching: true
-    use_scan_barycenter: true
-    minimum_travel_distance: 0.15       # Add scan after 15cm movement
-    minimum_travel_heading: 0.15        # Add scan after ~8.6 deg rotation
+    use_scan_barycenter: false          # False: anchor scans to base_link instead of shifting doorway ray center
+    minimum_travel_distance: 0.10       # Match scan every 10cm of translation
+    minimum_travel_heading: 0.08        # Match scan every ~4.5 deg of rotation (prevents rotational ghosting)
     scan_buffer_size: 20
-    scan_buffer_maximum_scan_distance: 25.0
-    link_match_minimum_response_fine: 0.1
+    scan_buffer_maximum_scan_distance: 12.0
+    link_match_minimum_response_fine: 0.15
     link_scan_maximum_distance: 1.5
     loop_search_maximum_distance: 6.0
     do_loop_closing: true
@@ -50,9 +50,9 @@ slam_toolbox:
     loop_match_minimum_response_fine: 0.45
 
     # Correlation Search Parameters
-    correlation_search_space_dimension: 0.5
+    correlation_search_space_dimension: 0.8
     correlation_search_space_resolution: 0.01
-    correlation_search_space_smear_deviation: 0.1
+    correlation_search_space_smear_deviation: 0.05
 
     # Loop Closure Search Parameters
     loop_search_space_dimension: 8.0
@@ -60,10 +60,10 @@ slam_toolbox:
     loop_search_space_smear_deviation: 0.03
 
     # Scan Matcher Variance Penalties
-    distance_variance_penalty: 0.5
-    angle_variance_penalty: 1.0
+    distance_variance_penalty: 0.3
+    angle_variance_penalty: 0.5
     fine_search_angle_offset: 0.00349
-    coarse_search_angle_offset: 0.349
+    coarse_search_angle_offset: 0.523   # ~30 deg search window to lock onto walls during turns
     coarse_angle_resolution: 0.0349
     minimum_angle_penalty: 0.9
     minimum_distance_penalty: 0.5
