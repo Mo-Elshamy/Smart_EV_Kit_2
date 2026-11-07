@@ -172,6 +172,17 @@ const ROSBridge = {
       this.updateTelemetryGps(message);
       this.notifyListeners('gps', message);
     });
+
+    // 6. Stereolabs ZED 2i 3D Depth Point Cloud (/zed/zed_node/point_cloud/cloud_registered)
+    const pointCloudTopic = new ROSLIB.Topic({
+      ros: this.ros,
+      name: '/zed/zed_node/point_cloud/cloud_registered',
+      messageType: 'sensor_msgs/PointCloud2',
+      throttle_rate: 500
+    });
+    pointCloudTopic.subscribe((message) => {
+      this.notifyListeners('pointcloud', message);
+    });
   },
 
   updateTelemetryOdom(msg) {

@@ -33,23 +33,17 @@ const MapRenderer = {
   robotMesh3D: null,
   is3DInitialized: false,
 
-  // 3D Layers
-  mapMesh3D: null,           // 3D textured ground plane of occupancy grid
-  mapTexture3D: null,
-  mapObstacles3D: null,      // 3D elevated obstacle wall columns
-  lidarPoints3D: null,       // Real-time single-sweep LiDAR scan ring
-  lidarAccumPoints3D: null,  // Persistent accumulated 3D LiDAR point cloud map
-  zedPoints3D: null,         // Stereolabs ZED 2i registered 3D depth point cloud
+  // 3D Layers (Stereolabs ZED 2i Depth Point Cloud Only)
+  zedPoints3D: null,         // Live Stereolabs ZED 2i registered 3D depth point cloud
+  zedAccumPoints3D: null,    // Persistent accumulated 3D world depth point cloud map
 
   // Buffer capacities
-  MAX_LIVE_SCAN_POINTS: 2000,
-  MAX_ACCUM_POINTS: 30000,
-  MAX_OBSTACLE_POINTS: 50000,
-  MAX_ZED_POINTS: 25000,
+  MAX_ZED_LIVE_POINTS: 25000,
+  MAX_ZED_ACCUM_POINTS: 80000,
 
-  accumIndex: 0,
-  accumCount: 0,
-  lastAccumPose: { x: null, y: null, yaw: null },
+  zedAccumIndex: 0,
+  zedAccumCount: 0,
+  lastZedAccumPose: { x: null, y: null, yaw: null },
 
   // 3D Orbit Controls
   orbit3D: {
@@ -184,64 +178,35 @@ const MapRenderer = {
     this.robotMesh3D = carGroup;
     this.scene3D.add(this.robotMesh3D);
 
-    // 6. Live LiDAR Scan Ring (Current Sweep at z = 0.45m) - Crisp White Points
-    const liveGeo = new THREE.BufferGeometry();
-    liveGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_LIVE_SCAN_POINTS * 3), 3));
-    liveGeo.setDrawRange(0, 0);
-    const liveMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 4.0,
-      sizeAttenuation: false,
-      transparent: true,
-      opacity: 1.0
-    });
-    this.lidarPoints3D = new THREE.Points(liveGeo, liveMat);
-    this.scene3D.add(this.lidarPoints3D);
-
-    // 7. Accumulated 3D LiDAR Point Cloud Map (World Coordinates)
-    const accumGeo = new THREE.BufferGeometry();
-    accumGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_ACCUM_POINTS * 3), 3));
-    accumGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ACCUM_POINTS * 3), 3));
-    accumGeo.setDrawRange(0, 0);
-    const accumMat = new THREE.PointsMaterial({
-      size: 3.0,
-      sizeAttenuation: false,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.90
-    });
-    this.lidarAccumPoints3D = new THREE.Points(accumGeo, accumMat);
-    this.scene3D.add(this.lidarAccumPoints3D);
-
-    // 8. 3D Elevated Obstacle Wall Columns (from 2D SLAM /map occupied cells)
-    const obsGeo = new THREE.BufferGeometry();
-    obsGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_OBSTACLE_POINTS * 3), 3));
-    obsGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_OBSTACLE_POINTS * 3), 3));
-    obsGeo.setDrawRange(0, 0);
-    const obsMat = new THREE.PointsMaterial({
+    // 6. Stereolabs ZED 2i Live Registered 3D Depth Point Cloud
+    const zedLiveGeo = new THREE.BufferGeometry();
+    zedLiveGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_LIVE_POINTS * 3), 3));
+    zedLiveGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_LIVE_POINTS * 3), 3));
+    zedLiveGeo.setDrawRange(0, 0);
+    const zedLiveMat = new THREE.PointsMaterial({
       size: 3.5,
-      sizeAttenuation: false,
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.90
-    });
-    this.mapObstacles3D = new THREE.Points(obsGeo, obsMat);
-    this.scene3D.add(this.mapObstacles3D);
-
-    // 9. Stereolabs ZED 2i Registered 3D Depth Point Cloud
-    const zedGeo = new THREE.BufferGeometry();
-    zedGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_POINTS * 3), 3));
-    zedGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_POINTS * 3), 3));
-    zedGeo.setDrawRange(0, 0);
-    const zedMat = new THREE.PointsMaterial({
-      size: 3.0,
       sizeAttenuation: false,
       vertexColors: true,
       transparent: true,
       opacity: 0.95
     });
-    this.zedPoints3D = new THREE.Points(zedGeo, zedMat);
+    this.zedPoints3D = new THREE.Points(zedLiveGeo, zedLiveMat);
     this.scene3D.add(this.zedPoints3D);
+
+    // 7. Stereolabs ZED 2i Accumulated 3D World Depth Point Cloud Map
+    const zedAccumGeo = new THREE.BufferGeometry();
+    zedAccumGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_ACCUM_POINTS * 3), 3));
+    zedAccumGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_ACCUM_POINTS * 3), 3));
+    zedAccumGeo.setDrawRange(0, 0);
+    const zedAccumMat = new THREE.PointsMaterial({
+      size: 2.8,
+      sizeAttenuation: false,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.85
+    });
+    this.zedAccumPoints3D = new THREE.Points(zedAccumGeo, zedAccumMat);
+    this.scene3D.add(this.zedAccumPoints3D);
 
     this.is3DInitialized = true;
     this.resize3D();
@@ -451,16 +416,8 @@ const MapRenderer = {
           window.ROSBridge.resetSLAM((success, msg) => {
             if (success) {
               this.mapData = null;
-              this.robotTrail = [];
+              this.poseTrail = [];
               this.clear3DAccumulation();
-              if (this.mapMesh3D) {
-                this.scene3D.remove(this.mapMesh3D);
-                this.mapMesh3D = null;
-              }
-              if (this.mapObstacles3D) {
-                this.scene3D.remove(this.mapObstacles3D);
-                this.mapObstacles3D = null;
-              }
               this.render2D();
               this.showToast('✓ ' + msg, 'success');
             } else {
@@ -557,10 +514,9 @@ const MapRenderer = {
       this.updateOccupancyGrid(msg);
     });
 
-    // 2. Process LiDAR Scan (/scan_filtered)
+    // 2. Process LiDAR Scan (/scan_filtered) - 2D Canvas ONLY
     window.ROSBridge.on('scan', (msg) => {
       this.lastScan = msg;
-      this.update3DScan(msg);
       this.render2D();
     });
 
@@ -659,208 +615,27 @@ const MapRenderer = {
 
     offCtx.putImageData(imgData, 0, 0);
 
-    // Update 3D textured ground plane
-    this.update3DMapMesh(msg);
-
-    // Update 3D elevated obstacle wall columns
-    this.update3DObstacleWalls(msg);
-
     this.render2D();
   },
 
-  update3DMapMesh(msg) {
-    if (!this.scene3D) return;
-    const { width, height, resolution } = msg.info;
-    const origin = msg.info.origin.position;
-    const worldW = width * resolution;
-    const worldH = height * resolution;
-
-    if (!this.mapTexture3D) {
-      this.mapTexture3D = new THREE.CanvasTexture(this.mapOffscreenCanvas);
-      this.mapTexture3D.minFilter = THREE.NearestFilter;
-      this.mapTexture3D.magFilter = THREE.NearestFilter;
-
-      const planeGeo = new THREE.PlaneGeometry(worldW, worldH);
-      const planeMat = new THREE.MeshBasicMaterial({
-        map: this.mapTexture3D,
-        transparent: true,
-        opacity: 0.85,
-        side: THREE.DoubleSide,
-        depthWrite: false
-      });
-      this.mapMesh3D = new THREE.Mesh(planeGeo, planeMat);
-      this.scene3D.add(this.mapMesh3D);
-    } else {
-      // Re-geometry if dimensions changed
-      if (this.mapMesh3D.geometry.parameters.width !== worldW ||
-          this.mapMesh3D.geometry.parameters.height !== worldH) {
-        this.mapMesh3D.geometry.dispose();
-        this.mapMesh3D.geometry = new THREE.PlaneGeometry(worldW, worldH);
-      }
-      this.mapTexture3D.needsUpdate = true;
-    }
-
-    // Position center of plane in ROS coordinates
-    this.mapMesh3D.position.set(
-      origin.x + worldW / 2,
-      origin.y + worldH / 2,
-      -0.01
-    );
-  },
-
-  update3DObstacleWalls(msg) {
-    if (!this.mapObstacles3D) return;
-    const { width, height, resolution } = msg.info;
-    const origin = msg.info.origin.position;
-    const data = msg.data;
-
-    const posAttr = this.mapObstacles3D.geometry.attributes.position;
-    const colAttr = this.mapObstacles3D.geometry.attributes.color;
-    const posArr = posAttr.array;
-    const colArr = colAttr.array;
-
-    let pIdx = 0;
-    const heights = [0.08, 0.22, 0.38, 0.54, 0.70]; // 5 vertical layers of holographic walls
-
-    // Stride through grid to keep 60 FPS
-    for (let y = 0; y < height; y += 2) {
-      for (let x = 0; x < width; x += 2) {
-        const val = data[y * width + x];
-        if (val >= 65) {
-          const wx = origin.x + (x + 0.5) * resolution;
-          const wy = origin.y + (y + 0.5) * resolution;
-
-          for (let h = 0; h < heights.length; h++) {
-            if (pIdx + 3 >= posArr.length) break;
-            const wz = heights[h];
-
-            posArr[pIdx] = wx;
-            posArr[pIdx + 1] = wy;
-            posArr[pIdx + 2] = wz;
-
-            // Height-based monochrome gradient (Dark Silver -> Pure Brilliant White)
-            const t = wz / 0.70;
-            const intensity = 0.55 + 0.45 * t;
-            colArr[pIdx] = intensity;      // R
-            colArr[pIdx + 1] = intensity;  // G
-            colArr[pIdx + 2] = intensity;  // B
-
-            pIdx += 3;
-          }
-        }
-        if (pIdx + 15 >= posArr.length) break;
-      }
-      if (pIdx + 15 >= posArr.length) break;
-    }
-
-    this.mapObstacles3D.geometry.setDrawRange(0, pIdx / 3);
-    posAttr.needsUpdate = true;
-    colAttr.needsUpdate = true;
-  },
-
-  // =========================================================================
-  // 3D LiDAR Scan & Persistent Point Cloud Accumulator
-  // =========================================================================
-  update3DScan(msg) {
-    if (!this.lidarPoints3D) return;
-    const livePos = this.lidarPoints3D.geometry.attributes.position.array;
-    const angleMin = msg.angle_min;
-    const angleInc = msg.angle_increment;
-    const ranges = msg.ranges;
-    let liveIdx = 0;
-
-    // Check if buggy has moved enough to accumulate world points (or populate initial buffer)
-    const dist = this.lastAccumPose.x === null ? 999 :
-      Math.hypot(this.robotPose.x - this.lastAccumPose.x, this.robotPose.y - this.lastAccumPose.y);
-    const dYaw = this.lastAccumPose.yaw === null ? 999 :
-      Math.abs(this.robotPose.yaw - this.lastAccumPose.yaw);
-    const isInitialSweep = this.accumCount < 2000;
-    const shouldAccumulate = isInitialSweep || (dist > 0.05 || dYaw > 0.04);
-
-    if (shouldAccumulate) {
-      this.lastAccumPose.x = this.robotPose.x;
-      this.lastAccumPose.y = this.robotPose.y;
-      this.lastAccumPose.yaw = this.robotPose.yaw;
-    }
-
-    const accumPosAttr = this.lidarAccumPoints3D ? this.lidarAccumPoints3D.geometry.attributes.position : null;
-    const accumColAttr = this.lidarAccumPoints3D ? this.lidarAccumPoints3D.geometry.attributes.color : null;
-
-    // Physical mount offset on buggy (URDF laser_joint: -0.77m, 0m, 0.95m)
-    const laserMountX = -0.77;
-    const laserMountY = 0.00;
-    const laserMountZ = 0.95;
-    const cosY = Math.cos(this.robotPose.yaw);
-    const sinY = Math.sin(this.robotPose.yaw);
-
-    for (let i = 0; i < ranges.length; i += 2) {
-      const r = ranges[i];
-      if (r >= msg.range_min && r <= msg.range_max) {
-        const localAngle = angleMin + i * angleInc;
-        // Transform from laser frame to base_link
-        const bx = laserMountX + r * Math.cos(localAngle);
-        const by = laserMountY + r * Math.sin(localAngle);
-        // Transform from base_link to world frame
-        const wx = this.robotPose.x + bx * cosY - by * sinY;
-        const wy = this.robotPose.y + bx * sinY + by * cosY;
-        const wz = laserMountZ;
-
-        // 1. Live sweep ring
-        if (liveIdx < livePos.length - 3) {
-          livePos[liveIdx++] = wx;
-          livePos[liveIdx++] = wy;
-          livePos[liveIdx++] = wz;
-        }
-
-        // 2. Persistent 3D Point Cloud Map accumulation
-        if (shouldAccumulate && accumPosAttr && r < msg.range_max - 0.2) {
-          const aIdx = (this.accumIndex % this.MAX_ACCUM_POINTS) * 3;
-          accumPosAttr.array[aIdx] = wx;
-          accumPosAttr.array[aIdx + 1] = wy;
-          accumPosAttr.array[aIdx + 2] = wz + (Math.random() - 0.5) * 0.03;
-
-          // Color: Crisp monochrome white/silver point
-          accumColAttr.array[aIdx] = 0.90;     // R
-          accumColAttr.array[aIdx + 1] = 0.90; // G
-          accumColAttr.array[aIdx + 2] = 0.90; // B
-
-          this.accumIndex++;
-          if (this.accumCount < this.MAX_ACCUM_POINTS) {
-            this.accumCount++;
-          }
-        }
-      }
-    }
-
-    // Set precise draw range for live scan ring
-    this.lidarPoints3D.geometry.setDrawRange(0, liveIdx / 3);
-    this.lidarPoints3D.geometry.attributes.position.needsUpdate = true;
-
-    // Update accumulated buffer draw range
-    if (shouldAccumulate && accumPosAttr && accumColAttr) {
-      accumPosAttr.needsUpdate = true;
-      accumColAttr.needsUpdate = true;
-      this.lidarAccumPoints3D.geometry.setDrawRange(0, this.accumCount);
-    }
-  },
 
   clear3DAccumulation() {
-    this.accumIndex = 0;
-    this.accumCount = 0;
-    this.lastAccumPose = { x: null, y: null, yaw: null };
-    if (this.lidarAccumPoints3D) {
-      this.lidarAccumPoints3D.geometry.setDrawRange(0, 0);
-      this.lidarAccumPoints3D.geometry.attributes.position.needsUpdate = true;
-    }
+    this.zedAccumIndex = 0;
+    this.zedAccumCount = 0;
+    this.lastZedAccumPose = { x: null, y: null, yaw: null };
     if (this.zedPoints3D) {
       this.zedPoints3D.geometry.setDrawRange(0, 0);
       this.zedPoints3D.geometry.attributes.position.needsUpdate = true;
     }
-    console.log('[MapRenderer] 3D Point Cloud Buffers Cleared');
+    if (this.zedAccumPoints3D) {
+      this.zedAccumPoints3D.geometry.setDrawRange(0, 0);
+      this.zedAccumPoints3D.geometry.attributes.position.needsUpdate = true;
+    }
+    console.log('[MapRenderer] ZED 3D Depth Point Cloud Buffers Cleared');
   },
 
   // =========================================================================
-  // Stereolabs ZED 2i 3D Point Cloud Decoder
+  // Stereolabs ZED 2i 3D Depth Point Cloud Decoder & Persistent Accumulator
   // =========================================================================
   updateZEDPointCloud(msg) {
     if (!this.zedPoints3D || !msg || !msg.data) return;
@@ -900,14 +675,33 @@ const MapRenderer = {
     const totalPoints = Math.floor(buffer.byteLength / pointStep);
     if (totalPoints <= 0) return;
 
-    // Downsample stride to stay within MAX_ZED_POINTS and maintain 60 FPS
-    const stride = Math.max(1, Math.floor(totalPoints / this.MAX_ZED_POINTS));
+    // Check if buggy has moved enough to accumulate world points (or populate initial buffer)
+    const dist = this.lastZedAccumPose.x === null ? 999 :
+      Math.hypot(this.robotPose.x - this.lastZedAccumPose.x, this.robotPose.y - this.lastZedAccumPose.y);
+    const dYaw = this.lastZedAccumPose.yaw === null ? 999 :
+      Math.abs(this.robotPose.yaw - this.lastZedAccumPose.yaw);
+    const isInitialSweep = this.zedAccumCount < 5000;
+    const shouldAccumulate = isInitialSweep || (dist > 0.05 || dYaw > 0.04);
+
+    if (shouldAccumulate) {
+      this.lastZedAccumPose.x = this.robotPose.x;
+      this.lastZedAccumPose.y = this.robotPose.y;
+      this.lastZedAccumPose.yaw = this.robotPose.yaw;
+    }
+
+    // Downsample stride to stay within MAX_ZED_LIVE_POINTS and maintain 60 FPS
+    const stride = Math.max(1, Math.floor(totalPoints / this.MAX_ZED_LIVE_POINTS));
     const isOptical = msg.header && msg.header.frame_id && msg.header.frame_id.includes('optical');
 
-    const posAttr = this.zedPoints3D.geometry.attributes.position;
-    const colAttr = this.zedPoints3D.geometry.attributes.color;
-    const posArr = posAttr.array;
-    const colArr = colAttr.array;
+    const livePosAttr = this.zedPoints3D.geometry.attributes.position;
+    const liveColAttr = this.zedPoints3D.geometry.attributes.color;
+    const livePosArr = livePosAttr.array;
+    const liveColArr = liveColAttr.array;
+
+    const accumPosAttr = this.zedAccumPoints3D ? this.zedAccumPoints3D.geometry.attributes.position : null;
+    const accumColAttr = this.zedAccumPoints3D ? this.zedAccumPoints3D.geometry.attributes.color : null;
+    const accumPosArr = accumPosAttr ? accumPosAttr.array : null;
+    const accumColArr = accumColAttr ? accumColAttr.array : null;
 
     const cosY = Math.cos(this.robotPose.yaw);
     const sinY = Math.sin(this.robotPose.yaw);
@@ -918,6 +712,7 @@ const MapRenderer = {
     const camMountZ = 0.36;
 
     let pIdx = 0;
+    let sampleCounter = 0;
 
     for (let i = 0; i < totalPoints; i += stride) {
       const bOff = i * pointStep;
@@ -951,32 +746,58 @@ const MapRenderer = {
       const wy = this.robotPose.y + bx * sinY + by * cosY;
       const wz = bz;
 
-      if (pIdx + 3 >= posArr.length) break;
-
-      posArr[pIdx] = wx;
-      posArr[pIdx + 1] = wy;
-      posArr[pIdx + 2] = wz;
-
       // Color extraction (RGB if present, otherwise depth/height colormap)
+      let rCol = 0.9, gCol = 0.9, bCol = 0.9;
       if (rgbOff >= 0 && bOff + rgbOff + 4 <= buffer.byteLength) {
         const rgbInt = dataView.getUint32(bOff + rgbOff, isLittleEndian);
-        colArr[pIdx] = ((rgbInt >> 16) & 0xff) / 255.0;     // R
-        colArr[pIdx + 1] = ((rgbInt >> 8) & 0xff) / 255.0;  // G
-        colArr[pIdx + 2] = (rgbInt & 0xff) / 255.0;         // B
+        rCol = ((rgbInt >> 16) & 0xff) / 255.0;
+        gCol = ((rgbInt >> 8) & 0xff) / 255.0;
+        bCol = (rgbInt & 0xff) / 255.0;
       } else {
-        // Height-based colormap: ground dark violet to high neon amber
         const t = Math.max(0, Math.min(1, wz / 1.5));
-        colArr[pIdx] = 0.2 + 0.8 * t;
-        colArr[pIdx + 1] = 0.4 + 0.5 * (1 - t);
-        colArr[pIdx + 2] = 0.9 * (1 - t);
+        rCol = 0.2 + 0.8 * t;
+        gCol = 0.4 + 0.5 * (1 - t);
+        bCol = 0.9 * (1 - t);
       }
 
-      pIdx += 3;
+      // 1. Live ZED points buffer
+      if (pIdx + 3 <= livePosArr.length) {
+        livePosArr[pIdx] = wx;
+        livePosArr[pIdx + 1] = wy;
+        livePosArr[pIdx + 2] = wz;
+        liveColArr[pIdx] = rCol;
+        liveColArr[pIdx + 1] = gCol;
+        liveColArr[pIdx + 2] = bCol;
+        pIdx += 3;
+      }
+
+      // 2. Persistent 3D World Map Accumulation (sample evenly to balance capacity)
+      if (shouldAccumulate && accumPosArr && accumColArr && (sampleCounter++ % 3 === 0)) {
+        const aIdx = (this.zedAccumIndex % this.MAX_ZED_ACCUM_POINTS) * 3;
+        accumPosArr[aIdx] = wx;
+        accumPosArr[aIdx + 1] = wy;
+        accumPosArr[aIdx + 2] = wz;
+        accumColArr[aIdx] = rCol;
+        accumColArr[aIdx + 1] = gCol;
+        accumColArr[aIdx + 2] = bCol;
+        this.zedAccumIndex++;
+        if (this.zedAccumCount < this.MAX_ZED_ACCUM_POINTS) {
+          this.zedAccumCount++;
+        }
+      }
     }
 
+    // Update live draw range
     this.zedPoints3D.geometry.setDrawRange(0, pIdx / 3);
-    posAttr.needsUpdate = true;
-    colAttr.needsUpdate = true;
+    livePosAttr.needsUpdate = true;
+    liveColAttr.needsUpdate = true;
+
+    // Update accumulated persistent draw range
+    if (shouldAccumulate && accumPosAttr && accumColAttr) {
+      accumPosAttr.needsUpdate = true;
+      accumColAttr.needsUpdate = true;
+      this.zedAccumPoints3D.geometry.setDrawRange(0, this.zedAccumCount);
+    }
   },
 
   // =========================================================================
@@ -1226,83 +1047,89 @@ free_thresh: 0.25
     }
 
     const name = (filename || 'ev_map_3d_' + Date.now()).trim();
-    let objText = `# Wavefront OBJ exported from Smart EV Buggy 3D SLAM\n# Created: ${new Date().toISOString()}\n\n`;
-    let vertCount = 0;
 
-    const appendGeometry = (geom, matrix) => {
-      const posAttr = geom.getAttribute('position');
-      if (!posAttr) return;
-      const indexAttr = geom.getIndex();
-      const localVertStart = vertCount;
+    // Source points: Prefer accumulated 3D world depth points; fallback to live ZED depth points
+    let posAttr = null;
+    let colAttr = null;
+    let pointCount = 0;
 
-      const v = new THREE.Vector3();
-      for (let i = 0; i < posAttr.count; i++) {
-        v.fromBufferAttribute(posAttr, i);
-        if (matrix) v.applyMatrix4(matrix);
-        objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
-        vertCount++;
-      }
-
-      if (indexAttr) {
-        for (let i = 0; i < indexAttr.count; i += 3) {
-          const a = indexAttr.getX(i) + localVertStart + 1;
-          const b = indexAttr.getX(i + 1) + localVertStart + 1;
-          const c = indexAttr.getX(i + 2) + localVertStart + 1;
-          objText += `f ${a} ${b} ${c}\n`;
-        }
-      } else {
-        for (let i = 0; i < posAttr.count; i += 3) {
-          const a = i + localVertStart + 1;
-          const b = i + 1 + localVertStart + 1;
-          const c = i + 2 + localVertStart + 1;
-          objText += `f ${a} ${b} ${c}\n`;
-        }
-      }
-    };
-
-    // 1. Export Ground Plane
-    if (this.mapMesh3D && this.mapMesh3D.geometry) {
-      objText += "g GroundPlane\n";
-      this.mapMesh3D.updateMatrixWorld(true);
-      appendGeometry(this.mapMesh3D.geometry, this.mapMesh3D.matrixWorld);
+    if (this.zedAccumPoints3D && this.zedAccumCount > 0) {
+      posAttr = this.zedAccumPoints3D.geometry.attributes.position;
+      colAttr = this.zedAccumPoints3D.geometry.attributes.color;
+      pointCount = this.zedAccumCount;
+    } else if (this.zedPoints3D) {
+      posAttr = this.zedPoints3D.geometry.attributes.position;
+      colAttr = this.zedPoints3D.geometry.attributes.color;
+      pointCount = (this.zedPoints3D.geometry.drawRange && this.zedPoints3D.geometry.drawRange.count) || 0;
     }
 
-    // 2. Export 3D Obstacle Walls
-    if (this.mapObstacles3D && this.mapObstacles3D.geometry) {
-      const posAttr = this.mapObstacles3D.geometry.getAttribute('position');
-      const drawCount = this.mapObstacles3D.geometry.drawRange.count || (posAttr ? posAttr.count : 0);
-      if (posAttr && drawCount > 0) {
-        objText += "g Obstacles\n";
-        const v = new THREE.Vector3();
-        for (let i = 0; i < drawCount; i++) {
-          v.fromBufferAttribute(posAttr, i);
-          if (v.x !== 0 || v.y !== 0 || v.z !== 0) {
-            objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
-            vertCount++;
-          }
-        }
-      }
+    if (!posAttr || pointCount === 0) {
+      this.showToast('No 3D camera depth points available to export yet. Drive buggy to capture depth!', 'warning');
+      return;
     }
 
-    // 3. Export Accumulated LiDAR Point Cloud (as vertices)
-    if (this.lidarAccumPoints3D && this.lidarAccumPoints3D.geometry) {
-      const posAttr = this.lidarAccumPoints3D.geometry.getAttribute('position');
-      const drawCount = this.lidarAccumPoints3D.geometry.drawRange.count || (posAttr ? posAttr.count : 0);
-      if (posAttr && drawCount > 0) {
-        objText += "g LidarPointCloud\n";
-        const v = new THREE.Vector3();
-        for (let i = 0; i < drawCount; i++) {
-          v.fromBufferAttribute(posAttr, i);
-          if (v.x !== 0 || v.y !== 0 || v.z !== 0) {
-            objText += `v ${v.x.toFixed(4)} ${v.y.toFixed(4)} ${v.z.toFixed(4)}\n`;
-            vertCount++;
-          }
-        }
+    // Limit export count to avoid browser crash, with max 25,000 3D solid micro-voxels
+    const maxExportVoxels = 25000;
+    const stride = Math.max(1, Math.floor(pointCount / maxExportVoxels));
+    const voxelRadius = 0.018; // 1.8 cm solid 3D micro-voxel
+
+    let objText = `# Wavefront OBJ - Stereolabs ZED 2i 3D Depth Map\n# Created: ${new Date().toISOString()}\n# Solid 3D micro-voxels (watertight closed surfaces for 3D viewers & slicers)\n\n`;
+    objText += "g ZED_3D_Depth_Map\n";
+
+    let vOffset = 0;
+    let exportedCount = 0;
+    const posArr = posAttr.array;
+    const colArr = colAttr ? colAttr.array : null;
+
+    // Loop through points and generate a solid 3D octahedron voxel per depth point
+    for (let i = 0; i < pointCount; i += stride) {
+      const idx = i * 3;
+      const x = posArr[idx];
+      const y = posArr[idx + 1];
+      const z = posArr[idx + 2];
+
+      if (x === 0 && y === 0 && z === 0) continue;
+      if (isNaN(x) || isNaN(y) || isNaN(z)) continue;
+
+      let r = 0.9, g = 0.9, b = 0.9;
+      if (colArr) {
+        r = colArr[idx] || 0.9;
+        g = colArr[idx + 1] || 0.9;
+        b = colArr[idx + 2] || 0.9;
       }
+      const colStr = ` ${r.toFixed(3)} ${g.toFixed(3)} ${b.toFixed(3)}`;
+
+      // 6 vertices per octahedron (closed watertight 3D solid)
+      // v1: top apex (+z)
+      // v2: bottom apex (-z)
+      // v3: +x equator
+      // v4: -x equator
+      // v5: +y equator
+      // v6: -y equator
+      objText += `v ${(x).toFixed(4)} ${(y).toFixed(4)} ${(z + voxelRadius).toFixed(4)}${colStr}\n`;
+      objText += `v ${(x).toFixed(4)} ${(y).toFixed(4)} ${(z - voxelRadius).toFixed(4)}${colStr}\n`;
+      objText += `v ${(x + voxelRadius).toFixed(4)} ${(y).toFixed(4)} ${(z).toFixed(4)}${colStr}\n`;
+      objText += `v ${(x - voxelRadius).toFixed(4)} ${(y).toFixed(4)} ${(z).toFixed(4)}${colStr}\n`;
+      objText += `v ${(x).toFixed(4)} ${(y + voxelRadius).toFixed(4)} ${(z).toFixed(4)}${colStr}\n`;
+      objText += `v ${(x).toFixed(4)} ${(y - voxelRadius).toFixed(4)} ${(z).toFixed(4)}${colStr}\n`;
+
+      // 8 triangular faces connecting the vertices into a closed solid
+      const base = vOffset;
+      objText += `f ${base + 1} ${base + 3} ${base + 5}\n`;
+      objText += `f ${base + 1} ${base + 5} ${base + 4}\n`;
+      objText += `f ${base + 1} ${base + 4} ${base + 6}\n`;
+      objText += `f ${base + 1} ${base + 6} ${base + 3}\n`;
+      objText += `f ${base + 2} ${base + 5} ${base + 3}\n`;
+      objText += `f ${base + 2} ${base + 4} ${base + 5}\n`;
+      objText += `f ${base + 2} ${base + 6} ${base + 4}\n`;
+      objText += `f ${base + 2} ${base + 3} ${base + 6}\n`;
+
+      vOffset += 6;
+      exportedCount++;
     }
 
-    if (vertCount === 0) {
-      this.showToast('No 3D map objects or points available to export yet', 'warning');
+    if (exportedCount === 0) {
+      this.showToast('No valid 3D points found to export', 'warning');
       return;
     }
 
@@ -1315,7 +1142,7 @@ free_thresh: 0.25
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    this.showToast(`✓ Exported ${name}.obj (${vertCount} vertices) to this device!`, 'success');
+    this.showToast(`✓ Exported ${name}.obj (${exportedCount} 3D depth voxels) to this device!`, 'success');
   }
 };
 
