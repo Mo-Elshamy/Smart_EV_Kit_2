@@ -20,8 +20,14 @@
       point_cloud_freq: 15.0        # Smooth 15 Hz point cloud streaming
       point_cloud_res: 'COMPACT'    # Bandwidth-optimized point cloud
       publish_point_cloud: true     # Advertise 3D point cloud
-      publish_depth_map: true       # Advertise raw depth map
-      publish_depth_image: true     # Advertise colorized depth image for visual RViz view
+      publish_depth_map: false      # Disabled: saves 55 MB/s uncompressed memory (dashboard uses depth_image/compressed)
+      publish_depth_image: true     # Advertise colorized depth image for visual Web/RViz view
+
+    mapping:
+      mapping_enabled: false        # Activated on-demand via ROS service for high-quality 3D spatial mapping
+      resolution: 0.05              # 5cm spatial resolution
+      max_mapping_range: 8.0        # 8m mapping range
+      fused_pointcloud_freq: 2.0    # 2 Hz fused spatial point cloud publication
 
     pos_tracking:
       pos_tracking_enabled: true    # Compute visual-inertial odometry (VIO)

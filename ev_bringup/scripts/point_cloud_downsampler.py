@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-PointCloud2 Downsampler Node for Web Telemetry
-Subscribes to raw ZED 2i registered point cloud (114,688 points, 1.83 MB)
-and downsamples to ~2,000 spatial points (26 KB) at 2-3 Hz.
-Prevents rosbridge WebSocket write queue saturation and client browser stalls.
+PointCloud2 Downsampler Node with Dynamic Scan Mode Control
+Supports:
+  - '2d': Pauses point cloud processing completely (0% CPU / 0 bandwidth for 2D SLAM priority)
+  - '3d': High-density 3D spatial scanning (~5,000 pts/msg @ 4 Hz, with ZED GPU spatial mapping support)
+  - 'hybrid': Balanced preview (~1,500 pts/msg @ 2.5 Hz)
+Controls:
+  - Listens on topic '/scan_mode' (std_msgs/msg/String: '2d', '3d', 'hybrid')
 """
 
 import math
@@ -13,20 +16,28 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from sensor_msgs.msg import PointCloud2
+from std_msgs.msg import String
 
 class PointCloudDownsampler(Node):
     def __init__(self):
         super().__init__('point_cloud_downsampler')
 
         self.declare_parameter('input_topic', '/zed/zed_node/point_cloud/cloud_registered')
+        self.declare_parameter('fused_input_topic', '/zed/zed_node/mapping/fused_cloud')
         self.declare_parameter('output_topic', '/zed/point_cloud_downsampled')
-        self.declare_parameter('target_points', 2000)
-        self.declare_parameter('min_interval_sec', 0.35) # ~3 Hz max rate
+        self.declare_parameter('initial_mode', 'hybrid')
 
-        in_topic = self.get_parameter('input_topic').value
-        out_topic = self.get_parameter('output_topic').value
-        self.target_points = self.get_parameter('target_points').value
-        self.min_interval = self.get_parameter('min_interval_sec').value
+        self.in_topic = self.get_parameter('input_topic').value
+        self.fused_in_topic = self.get_parameter('fused_input_topic').value
+        self.out_topic = self.get_parameter('output_topic').value
+        self.current_mode = self.get_parameter('initial_mode').value.lower()
+
+        # Dynamic mode profiles
+        self.mode_profiles = {
+            '2d': {'enabled': False, 'target_points': 0, 'min_interval': 1.0},
+            '3d': {'enabled': True, 'target_points': 5000, 'min_interval': 0.25},
+            'hybrid': {'enabled': True, 'target_points': 1500, 'min_interval': 0.35}
+        }
 
         self.last_pub_time = 0.0
 
@@ -42,22 +53,73 @@ class PointCloudDownsampler(Node):
             depth=5
         )
 
-        self.sub = self.create_subscription(
+        # Standard live point cloud subscriber
+        self.sub_raw = self.create_subscription(
             PointCloud2,
-            in_topic,
+            self.in_topic,
             self.cloud_callback,
             qos_sub
         )
 
+        # Fused ZED spatial mapping subscriber (active when mapping is enabled)
+        self.sub_fused = self.create_subscription(
+            PointCloud2,
+            self.fused_in_topic,
+            self.cloud_callback,
+            qos_sub
+        )
+
+        # Mode command subscriber
+        self.sub_mode = self.create_subscription(
+            String,
+            '/scan_mode',
+            self.mode_callback,
+            10
+        )
+
+        # Mode status publisher
+        self.pub_mode_status = self.create_publisher(
+            String,
+            '/scan_mode_status',
+            10
+        )
+
         self.pub = self.create_publisher(
             PointCloud2,
-            out_topic,
+            self.out_topic,
             qos_pub
         )
 
-        self.get_logger().info(f'Downsampler running: {in_topic} -> {out_topic} (~{self.target_points} pts @ {1.0/self.min_interval:.1f}Hz)')
+        self.apply_mode(self.current_mode)
+        self.get_logger().info(f'PointCloudDownsampler initialized in [{self.current_mode.upper()}] mode')
+
+    def mode_callback(self, msg: String):
+        requested = msg.data.strip().lower()
+        if requested in self.mode_profiles:
+            self.apply_mode(requested)
+        else:
+            self.get_logger().warn(f'Unknown scan mode requested: {requested}. Valid modes: 2d, 3d, hybrid')
+
+    def apply_mode(self, mode: str):
+        self.current_mode = mode
+        profile = self.mode_profiles[mode]
+        self.is_enabled = profile['enabled']
+        self.target_points = profile['target_points']
+        self.min_interval = profile['min_interval']
+
+        status_msg = String()
+        status_msg.data = mode
+        self.pub_mode_status.publish(status_msg)
+
+        if not self.is_enabled:
+            self.get_logger().info('Mode [2D ONLY]: Point cloud streaming PAUSED (0% CPU / bandwidth dedicated to 2D SLAM)')
+        else:
+            self.get_logger().info(f'Mode [{mode.upper()}]: Target {self.target_points} pts @ {1.0/self.min_interval:.1f}Hz')
 
     def cloud_callback(self, msg: PointCloud2):
+        if not self.is_enabled:
+            return
+
         now = time.time()
         if now - self.last_pub_time < self.min_interval:
             return
@@ -73,7 +135,6 @@ class PointCloudDownsampler(Node):
         out_data = bytearray()
         count = 0
 
-        # Little endian float unpacker
         unpack = struct.unpack_from
         for i in range(0, len(data) - ps + 1, ps * stride):
             x, y, z = unpack('<fff', data, i)

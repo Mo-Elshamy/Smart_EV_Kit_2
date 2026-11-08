@@ -19,6 +19,12 @@ def generate_launch_description():
         default_value='9090',
         description='WebSocket bridge port for telemetry & maps'
     )
+    scan_mode_arg = DeclareLaunchArgument(
+        'scan_mode',
+        default_value='hybrid',
+        choices=['2d', '3d', 'hybrid'],
+        description='Active scanning mode: 2d (SLAM only), 3d (Spatial only), or hybrid (both)'
+    )
 
     web_video_server_node = Node(
         package='web_video_server',
@@ -58,13 +64,17 @@ def generate_launch_description():
         name='point_cloud_downsampler',
         output='screen',
         respawn=True,
-        respawn_delay=2.0
+        respawn_delay=2.0,
+        parameters=[{
+            'initial_mode': LaunchConfiguration('scan_mode')
+        }]
     )
 
     return LaunchDescription([
         video_port_arg,
         video_address_arg,
         rosbridge_port_arg,
+        scan_mode_arg,
         web_video_server_node,
         rosbridge_node,
         downsampler_node

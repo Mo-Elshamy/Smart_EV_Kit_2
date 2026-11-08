@@ -93,6 +93,11 @@
       <div class="module-header">
         <span>2D SLAM & 3D SPATIAL VIEW (:9090)</span>
         <div class="module-tools">
+          <div class="mode-selector-bar">
+            <button id="btn-mode-2d" class="mode-btn" data-mode="2d" title="2D SLAM Only: LiDAR + EKF, full CPU allocated to 2D occupancy grid">2D SLAM</button>
+            <button id="btn-mode-hybrid" class="mode-btn active" data-mode="hybrid" title="Split Mode: 2D SLAM + 3D Spatial View">Split (2D+3D)</button>
+            <button id="btn-mode-3d" class="mode-btn" data-mode="3d" title="3D Scan Only: Stereolabs ZED Spatial Mapping & Dense Point Cloud">3D Scan</button>
+          </div>
           <button id="btn-map-follow" class="btn-tool active">Follow: ON</button>
           <button id="btn-map-center" class="btn-tool">Center</button>
           <button id="btn-map-reset" class="btn-tool" title="Reset Viewport Pan & Zoom">Reset View</button>
@@ -204,9 +209,9 @@
   <script src="js/vendor/leaflet.js"></script>
 
   <!-- Smart EV Dashboard Core Modules -->
-  <script src="js/ros_bridge.js?v=2.7"></script>
-  <script src="js/map_renderer.js?v=2.7"></script>
-  <script src="js/telemetry_hud.js?v=2.7"></script>
-  <script src="js/app.js?v=2.7"></script>
+  <script src="js/ros_bridge.js?v=2.8"></script>
+  <script src="js/map_renderer.js?v=2.8"></script>
+  <script src="js/telemetry_hud.js?v=2.8"></script>
+  <script src="js/app.js?v=2.8"></script>
 </body>
 </html>

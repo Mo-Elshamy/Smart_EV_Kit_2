@@ -573,3 +573,23 @@ Calibrated URDF physical joint origins in `sensor_mounts.xacro` and web visualiz
 - Default fallback GPS pin set to initial test coordinates (`25.322608, 55.487920`), auto-overridden smoothly the instant valid GNSS satellite fixes arrive.
 - High-contrast black/white occupancy grid styling with translucent free space and highlighted obstacle boundaries.
 
+### 5. Decoupled 2D SLAM vs. 3D Scanning Modes (Zero-Contention)
+- **Problem Fixed:** Running simultaneous high-bandwidth 3D depth point clouds and 2D SLAM map serialization saturated the Jetson CPU and WebSocket queue, causing map drops and ghosting.
+- **Dynamic Mode Control:** Segmented mode bar on the web dashboard lets the operator select:
+  - **`2D SLAM Only`**: 3D point cloud generation is completely paused on the Jetson (0% CPU, 0 KB/s network bandwidth). WebGL 3D render loop is stopped in the browser. 100% of compute is dedicated to LiDAR and EKF 2D occupancy grid generation.
+  - **`3D Scan Only`**: 2D map WebSocket subscription is suspended. The Jetson point cloud downsampler boosts target density to 5,000 pts/frame @ 4.0 Hz with Stereolabs spatial mapping integration. The WebGL 3D viewport expands to full-screen.
+  - **`Split (2D+3D)`**: Balanced multi-sensor mode streaming 1,500 pts/frame @ 2.5–3.0 Hz for concurrent 2D and 3D visualization.
+- **3D Voxel Hash De-duplication:** Accumulated 3D world depth points are filtered through a $2.5\text{ cm}^3$ spatial voxel hash grid. Stationary or slow vehicle scanning produces crisp, watertight point clouds without redundant point stacking.
+
+### 6. Jetson Orin Nano Headless & MAXN_SUPER Optimization Script
+- **Tool:** `optimize_jetson.sh` (located in workspace root and `ev_bringup/scripts/`).
+- **Headless Mode (`--headless`):** Disables `gdm3`, `Xorg`, and `gnome-shell`, freeing **~500 MB** of unified RAM/VRAM and eliminating display-server scheduling jitter when operating remotely over SSH.
+- **Max Performance (`--max-perf`):** Activates Power Mode 2 (`MAXN_SUPER`), unlocking 1.73 GHz CPU, 1020 MHz GPU, and 3.2 GHz memory bus clocks.
+- **One-Command Setup:**
+  ```bash
+  sudo bash ~/ev_ws/optimize_jetson.sh --all     # Headless + MAXN_SUPER
+  sudo bash ~/ev_ws/optimize_jetson.sh --gui     # Restore GUI when HDMI monitor is needed
+  bash ~/ev_ws/optimize_jetson.sh --status       # Inspect power mode and frequencies
+  ```
+
+

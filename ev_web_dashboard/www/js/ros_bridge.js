@@ -7,6 +7,14 @@ const ROSBridge = {
   ros: null,
   connected: false,
   reconnectInterval: 3000,
+  currentScanMode: 'hybrid',
+  topics: {},
+  isMapSubscribed: false,
+  isPointCloudSubscribed: false,
+  mapHandler: null,
+  pointCloudHandler: null,
+  scanModeTopic: null,
+  scanModeStatusTopic: null,
   listeners: {
     connection: [],
     map: [],
@@ -14,7 +22,9 @@ const ROSBridge = {
     odom: [],
     imu: [],
     gps: [],
-    pointcloud: []
+    pointcloud: [],
+    scan_mode_changed: [],
+    scan_mode_status: []
   },
 
   init() {
@@ -97,6 +107,9 @@ const ROSBridge = {
     this.ros.on('close', () => {
       console.log('[ROSBridge] Connection closed. Retrying in 3s...');
       this.connected = false;
+      this.topics = {};
+      this.isMapSubscribed = false;
+      this.isPointCloudSubscribed = false;
       this.updateStatus('DISCONNECTED', 'danger');
       this.notifyListeners('connection', false);
       setTimeout(() => this.init(), this.reconnectInterval);
@@ -115,74 +128,177 @@ const ROSBridge = {
   },
 
   setupSubscriptions() {
+    if (this.topics.map) return; // Prevent duplicate subscriptions
+
+    this.mapHandler = (message) => {
+      this.notifyListeners('map', message);
+    };
+
+    this.pointCloudHandler = (message) => {
+      this.notifyListeners('pointcloud', message);
+    };
+
     // 1. Occupancy Grid (/map)
-    const mapTopic = new ROSLIB.Topic({
+    this.topics.map = new ROSLIB.Topic({
       ros: this.ros,
       name: '/map',
       messageType: 'nav_msgs/OccupancyGrid',
       throttle_rate: 1500
     });
-    mapTopic.subscribe((message) => {
-      this.notifyListeners('map', message);
-    });
+    this.topics.map.subscribe(this.mapHandler);
+    this.isMapSubscribed = true;
 
     // 2. Filtered LiDAR Scan (/scan_filtered)
-    const scanTopic = new ROSLIB.Topic({
+    this.topics.scan = new ROSLIB.Topic({
       ros: this.ros,
       name: '/scan_filtered',
       messageType: 'sensor_msgs/LaserScan',
       throttle_rate: 150
     });
-    scanTopic.subscribe((message) => {
+    this.topics.scan.subscribe((message) => {
       this.notifyListeners('scan', message);
     });
 
     // 3. EKF Filtered Odometry (/odometry/filtered)
-    const odomTopic = new ROSLIB.Topic({
+    this.topics.odom = new ROSLIB.Topic({
       ros: this.ros,
       name: '/odometry/filtered',
       messageType: 'nav_msgs/Odometry',
       throttle_rate: 100
     });
-    odomTopic.subscribe((message) => {
+    this.topics.odom.subscribe((message) => {
       this.updateTelemetryOdom(message);
       this.notifyListeners('odom', message);
     });
 
     // 4. WitMotion IMU (/imu/data)
-    const imuTopic = new ROSLIB.Topic({
+    this.topics.imu = new ROSLIB.Topic({
       ros: this.ros,
       name: '/imu/data',
       messageType: 'sensor_msgs/Imu',
       throttle_rate: 150
     });
-    imuTopic.subscribe((message) => {
+    this.topics.imu.subscribe((message) => {
       this.updateTelemetryImu(message);
       this.notifyListeners('imu', message);
     });
 
     // 5. Holybro M9N GNSS (/fix)
-    const gpsTopic = new ROSLIB.Topic({
+    this.topics.gps = new ROSLIB.Topic({
       ros: this.ros,
       name: '/fix',
       messageType: 'sensor_msgs/NavSatFix',
       throttle_rate: 500
     });
-    gpsTopic.subscribe((message) => {
+    this.topics.gps.subscribe((message) => {
       this.updateTelemetryGps(message);
       this.notifyListeners('gps', message);
     });
 
     // 6. Stereolabs ZED 2i 3D Depth Point Cloud (Bandwidth-optimized downsampled topic)
-    const pointCloudTopic = new ROSLIB.Topic({
+    this.topics.pointcloud = new ROSLIB.Topic({
       ros: this.ros,
       name: '/zed/point_cloud_downsampled',
       messageType: 'sensor_msgs/PointCloud2',
       throttle_rate: 400
     });
-    pointCloudTopic.subscribe((message) => {
-      this.notifyListeners('pointcloud', message);
+    this.topics.pointcloud.subscribe(this.pointCloudHandler);
+    this.isPointCloudSubscribed = true;
+
+    // 7. Dynamic Scan Mode Publisher & Status Subscriber
+    this.scanModeTopic = new ROSLIB.Topic({
+      ros: this.ros,
+      name: '/scan_mode',
+      messageType: 'std_msgs/String'
     });
+
+    this.scanModeStatusTopic = new ROSLIB.Topic({
+      ros: this.ros,
+      name: '/scan_mode_status',
+      messageType: 'std_msgs/String',
+      throttle_rate: 500
+    });
+    this.scanModeStatusTopic.subscribe((message) => {
+      if (message && message.data) {
+        this.notifyListeners('scan_mode_status', message.data);
+      }
+    });
+
+    // Synchronize current mode with backend
+    if (this.currentScanMode) {
+      this.setScanMode(this.currentScanMode);
+    }
+  },
+
+  setScanMode(mode) {
+    if (mode !== '2d' && mode !== '3d' && mode !== 'hybrid') mode = 'hybrid';
+    this.currentScanMode = mode;
+    console.log(`[ROSBridge] Scan mode requested: ${mode}`);
+
+    // Publish to ROS /scan_mode topic
+    if (this.scanModeTopic && this.connected) {
+      const msg = new ROSLIB.Message({ data: mode });
+      this.scanModeTopic.publish(msg);
+    }
+
+    if (mode === '2d') {
+      // 2D SLAM Only: Unsubscribe point cloud to free 100% of network & client CPU
+      if (this.topics.pointcloud && this.isPointCloudSubscribed) {
+        this.topics.pointcloud.unsubscribe();
+        this.isPointCloudSubscribed = false;
+        console.log('[ROSBridge] Point cloud topic unsubscribed (2D Mode)');
+      }
+      // Ensure /map is subscribed
+      if (this.topics.map && !this.isMapSubscribed && this.mapHandler) {
+        this.topics.map.subscribe(this.mapHandler);
+        this.isMapSubscribed = true;
+        console.log('[ROSBridge] Map topic subscribed (2D Mode)');
+      }
+    } else if (mode === '3d') {
+      // 3D Scan Only: Unsubscribe /map to allocate maximum bandwidth to 3D point cloud
+      if (this.topics.map && this.isMapSubscribed) {
+        this.topics.map.unsubscribe();
+        this.isMapSubscribed = false;
+        console.log('[ROSBridge] Map topic unsubscribed (3D Mode)');
+      }
+      // Ensure point cloud is subscribed
+      if (this.topics.pointcloud && !this.isPointCloudSubscribed && this.pointCloudHandler) {
+        this.topics.pointcloud.subscribe(this.pointCloudHandler);
+        this.isPointCloudSubscribed = true;
+        console.log('[ROSBridge] Point cloud topic subscribed (3D Mode)');
+      }
+      this.enableZedMapping(true);
+    } else {
+      // Split Hybrid Mode: Both subscribed
+      if (this.topics.map && !this.isMapSubscribed && this.mapHandler) {
+        this.topics.map.subscribe(this.mapHandler);
+        this.isMapSubscribed = true;
+      }
+      if (this.topics.pointcloud && !this.isPointCloudSubscribed && this.pointCloudHandler) {
+        this.topics.pointcloud.subscribe(this.pointCloudHandler);
+        this.isPointCloudSubscribed = true;
+      }
+    }
+
+    this.notifyListeners('scan_mode_changed', mode);
+  },
+
+  enableZedMapping(enable, callback) {
+    if (!this.ros || !this.connected) return;
+    const srv = new ROSLIB.Service({
+      ros: this.ros,
+      name: '/zed/zed_node/enable_mapping',
+      serviceType: 'std_srvs/srv/SetBool'
+    });
+    const req = new ROSLIB.ServiceRequest({ data: !!enable });
+    srv.callService(req, (res) => {
+      console.log('[ROSBridge] ZED enable_mapping response:', res);
+      if (callback) callback(true, res);
+    }, (err) => {
+      // Silently ignore if mapping service is optional
+      if (callback) callback(false, err);
+    });
+  },
   },
 
   updateTelemetryOdom(msg) {
