@@ -51,11 +51,21 @@ def generate_launch_description():
         }]
     )
 
+    downsampler_node = Node(
+        package='ev_bringup',
+        executable='point_cloud_downsampler.py',
+        name='point_cloud_downsampler',
+        output='screen',
+        respawn=True,
+        respawn_delay=2.0
+    )
+
     return LaunchDescription([
         video_port_arg,
         video_address_arg,
         rosbridge_port_arg,
         web_video_server_node,
-        rosbridge_node
+        rosbridge_node,
+        downsampler_node
     ])
 

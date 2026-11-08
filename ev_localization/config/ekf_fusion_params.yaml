@@ -42,13 +42,13 @@ ekf_filter_node:
     # =========================================================================
     # Sensor 2: WitMotion WT901 9-Axis IMU
     # Topic: /imu/data
-    # Fuses: Vyaw angular velocity (Gyro Z) and differential Yaw
+    # Fuses: Absolute filtered Yaw and Vyaw angular velocity (Gyro Z)
     # Note: Linear acceleration (Ax) is disabled to prevent quadratic integration drift
     # when stationary/tilting without wheel encoders.
     # =========================================================================
     imu0: /imu/data
     imu0_config: [false, false, false,
-                  false, false, false,
+                  false, false, true,
                   false, false, false,
                   false, false, true,
                   false, false, false]

@@ -33,13 +33,19 @@ const MapRenderer = {
   robotMesh3D: null,
   is3DInitialized: false,
 
-  // 3D Layers (Stereolabs ZED 2i Depth Point Cloud Only)
+  // 3D Layers (Complete Hybrid: 3D SLAM Floor + Walls + LiDAR + ZED Depth)
+  mapMesh3D: null,           // 3D textured ground plane of occupancy grid
+  mapTexture3D: null,
+  mapObstacles3D: null,      // 3D elevated obstacle wall columns
+  lidarPoints3D: null,       // Real-time single-sweep LiDAR scan ring
   zedPoints3D: null,         // Live Stereolabs ZED 2i registered 3D depth point cloud
   zedAccumPoints3D: null,    // Persistent accumulated 3D world depth point cloud map
 
   // Buffer capacities
-  MAX_ZED_LIVE_POINTS: 25000,
-  MAX_ZED_ACCUM_POINTS: 80000,
+  MAX_LIVE_SCAN_POINTS: 2000,
+  MAX_OBSTACLE_POINTS: 50000,
+  MAX_ZED_LIVE_POINTS: 10000,
+  MAX_ZED_ACCUM_POINTS: 60000,
 
   zedAccumIndex: 0,
   zedAccumCount: 0,
@@ -178,7 +184,36 @@ const MapRenderer = {
     this.robotMesh3D = carGroup;
     this.scene3D.add(this.robotMesh3D);
 
-    // 6. Stereolabs ZED 2i Live Registered 3D Depth Point Cloud
+    // 6. 3D Elevated Obstacle Wall Columns (from 2D SLAM /map occupied cells)
+    const obsGeo = new THREE.BufferGeometry();
+    obsGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_OBSTACLE_POINTS * 3), 3));
+    obsGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_OBSTACLE_POINTS * 3), 3));
+    obsGeo.setDrawRange(0, 0);
+    const obsMat = new THREE.PointsMaterial({
+      size: 3.5,
+      sizeAttenuation: false,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.90
+    });
+    this.mapObstacles3D = new THREE.Points(obsGeo, obsMat);
+    this.scene3D.add(this.mapObstacles3D);
+
+    // 7. Live LiDAR Scan Ring (Current Sweep at z = 0.95m)
+    const liveGeo = new THREE.BufferGeometry();
+    liveGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_LIVE_SCAN_POINTS * 3), 3));
+    liveGeo.setDrawRange(0, 0);
+    const liveMat = new THREE.PointsMaterial({
+      color: 0xef4444, // Red
+      size: 4.0,
+      sizeAttenuation: false,
+      transparent: true,
+      opacity: 1.0
+    });
+    this.lidarPoints3D = new THREE.Points(liveGeo, liveMat);
+    this.scene3D.add(this.lidarPoints3D);
+
+    // 8. Stereolabs ZED 2i Live Registered 3D Depth Point Cloud
     const zedLiveGeo = new THREE.BufferGeometry();
     zedLiveGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_LIVE_POINTS * 3), 3));
     zedLiveGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(this.MAX_ZED_LIVE_POINTS * 3), 3));
@@ -418,6 +453,14 @@ const MapRenderer = {
               this.mapData = null;
               this.poseTrail = [];
               this.clear3DAccumulation();
+              if (this.mapMesh3D) {
+                this.scene3D.remove(this.mapMesh3D);
+                this.mapMesh3D = null;
+                this.mapTexture3D = null;
+              }
+              if (this.mapObstacles3D) {
+                this.mapObstacles3D.geometry.setDrawRange(0, 0);
+              }
               this.render2D();
               this.showToast('✓ ' + msg, 'success');
             } else {
@@ -514,9 +557,10 @@ const MapRenderer = {
       this.updateOccupancyGrid(msg);
     });
 
-    // 2. Process LiDAR Scan (/scan_filtered) - 2D Canvas ONLY
+    // 2. Process LiDAR Scan (/scan_filtered) - 2D Canvas & 3D Laser Ring
     window.ROSBridge.on('scan', (msg) => {
       this.lastScan = msg;
+      this.update3DScan(msg);
       this.render2D();
     });
 
@@ -615,7 +659,133 @@ const MapRenderer = {
 
     offCtx.putImageData(imgData, 0, 0);
 
+    // Update 3D Ground Plane & 3D Obstacle Wall Columns
+    this.update3DMapMesh(msg);
+    this.update3DObstacleWalls(msg);
+
     this.render2D();
+  },
+
+  update3DMapMesh(msg) {
+    if (!this.scene3D) return;
+    const { width, height, resolution } = msg.info;
+    const origin = msg.info.origin.position;
+    const worldW = width * resolution;
+    const worldH = height * resolution;
+
+    if (!this.mapTexture3D) {
+      this.mapTexture3D = new THREE.CanvasTexture(this.mapOffscreenCanvas);
+      this.mapTexture3D.minFilter = THREE.NearestFilter;
+      this.mapTexture3D.magFilter = THREE.NearestFilter;
+
+      const planeGeo = new THREE.PlaneGeometry(worldW, worldH);
+      const planeMat = new THREE.MeshBasicMaterial({
+        map: this.mapTexture3D,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide,
+        depthWrite: false
+      });
+      this.mapMesh3D = new THREE.Mesh(planeGeo, planeMat);
+      this.scene3D.add(this.mapMesh3D);
+    } else {
+      if (this.mapMesh3D.geometry.parameters.width !== worldW ||
+          this.mapMesh3D.geometry.parameters.height !== worldH) {
+        this.mapMesh3D.geometry.dispose();
+        this.mapMesh3D.geometry = new THREE.PlaneGeometry(worldW, worldH);
+      }
+      this.mapTexture3D.needsUpdate = true;
+    }
+
+    this.mapMesh3D.position.set(
+      origin.x + worldW / 2,
+      origin.y + worldH / 2,
+      -0.01
+    );
+  },
+
+  update3DObstacleWalls(msg) {
+    if (!this.mapObstacles3D) return;
+    const { width, height, resolution } = msg.info;
+    const origin = msg.info.origin.position;
+    const data = msg.data;
+
+    const posAttr = this.mapObstacles3D.geometry.attributes.position;
+    const colAttr = this.mapObstacles3D.geometry.attributes.color;
+    const posArr = posAttr.array;
+    const colArr = colAttr.array;
+
+    let pIdx = 0;
+    const heights = [0.08, 0.22, 0.38, 0.54, 0.70];
+
+    for (let y = 0; y < height; y += 2) {
+      for (let x = 0; x < width; x += 2) {
+        const val = data[y * width + x];
+        if (val >= 65) {
+          const wx = origin.x + (x + 0.5) * resolution;
+          const wy = origin.y + (y + 0.5) * resolution;
+
+          for (let h = 0; h < heights.length; h++) {
+            if (pIdx + 3 >= posArr.length) break;
+            const wz = heights[h];
+
+            posArr[pIdx] = wx;
+            posArr[pIdx + 1] = wy;
+            posArr[pIdx + 2] = wz;
+
+            const t = wz / 0.70;
+            const intensity = 0.55 + 0.45 * t;
+            colArr[pIdx] = intensity;
+            colArr[pIdx + 1] = intensity;
+            colArr[pIdx + 2] = intensity;
+
+            pIdx += 3;
+          }
+        }
+        if (pIdx + 15 >= posArr.length) break;
+      }
+      if (pIdx + 15 >= posArr.length) break;
+    }
+
+    this.mapObstacles3D.geometry.setDrawRange(0, pIdx / 3);
+    posAttr.needsUpdate = true;
+    colAttr.needsUpdate = true;
+  },
+
+  update3DScan(msg) {
+    if (!this.lidarPoints3D) return;
+    const livePos = this.lidarPoints3D.geometry.attributes.position.array;
+    const angleMin = msg.angle_min;
+    const angleInc = msg.angle_increment;
+    const ranges = msg.ranges;
+    let liveIdx = 0;
+
+    const laserMountX = -0.77;
+    const laserMountY = 0.00;
+    const laserMountZ = 0.95;
+    const cosY = Math.cos(this.robotPose.yaw);
+    const sinY = Math.sin(this.robotPose.yaw);
+
+    for (let i = 0; i < ranges.length; i += 2) {
+      const r = ranges[i];
+      if (r >= msg.range_min && r <= msg.range_max) {
+        const localAngle = angleMin + i * angleInc;
+        const bx = laserMountX + r * Math.cos(localAngle);
+        const by = laserMountY + r * Math.sin(localAngle);
+        const wx = this.robotPose.x + bx * cosY - by * sinY;
+        const wy = this.robotPose.y + bx * sinY + by * cosY;
+
+        if (liveIdx + 3 <= livePos.length) {
+          livePos[liveIdx] = wx;
+          livePos[liveIdx + 1] = wy;
+          livePos[liveIdx + 2] = laserMountZ;
+          liveIdx += 3;
+        }
+      }
+    }
+
+    this.lidarPoints3D.geometry.setDrawRange(0, liveIdx / 3);
+    this.lidarPoints3D.geometry.attributes.position.needsUpdate = true;
   },
 
 

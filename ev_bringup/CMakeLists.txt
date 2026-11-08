@@ -15,6 +15,7 @@ install(
 install(
   PROGRAMS
     scripts/imu_tf_broadcaster.py
+    scripts/point_cloud_downsampler.py
     scripts/setup_imu.sh
     scripts/setup_gps.sh
     scripts/setup_lidar.sh
