@@ -640,20 +640,27 @@ const MapRenderer = {
   updateZEDPointCloud(msg) {
     if (!this.zedPoints3D || !msg || !msg.data) return;
 
-    // 1. Decode binary buffer from base64 string or ArrayBuffer
+    // 1. Decode binary buffer from base64 string, Uint8Array, or ArrayBuffer
     let buffer;
     if (typeof msg.data === 'string') {
       const binStr = atob(msg.data);
-      const bytes = new Uint8Array(binStr.length);
-      for (let i = 0; i < binStr.length; i++) {
+      const len = binStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
         bytes[i] = binStr.charCodeAt(i);
       }
       buffer = bytes.buffer;
+    } else if (Array.isArray(msg.data)) {
+      const bytes = new Uint8Array(msg.data);
+      buffer = bytes.buffer;
+    } else if (msg.data instanceof Uint8Array) {
+      buffer = msg.data.buffer;
     } else if (msg.data.buffer instanceof ArrayBuffer) {
       buffer = msg.data.buffer;
     } else if (msg.data instanceof ArrayBuffer) {
       buffer = msg.data;
     } else {
+      console.warn('[MapRenderer] Unsupported PointCloud2 data format:', typeof msg.data);
       return;
     }
 
