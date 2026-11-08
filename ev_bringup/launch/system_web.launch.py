@@ -88,17 +88,18 @@ def generate_launch_description():
         default_value='false',
         description='Fuse GNSS coordinates into EKF odometry'
     )
-    scan_mode_arg = DeclareLaunchArgument(
-        'scan_mode',
+    mapping_mode_arg = DeclareLaunchArgument(
+        'mapping_mode',
         default_value='hybrid',
         choices=['2d', '3d', 'hybrid'],
         description='Active scanning mode: 2d (SLAM only), 3d (Spatial only), or hybrid (both)'
     )
 
-    # 1. Full Navigation & SLAM Stack (Sensors + Description + EKF + SLAM)
+    # 1. Full Navigation & Sensor Stack (Sensors + Description + EKF + SLAM)
     slam_stack_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(slam_launch_file),
         launch_arguments={
+            'enable_slam': LaunchConfiguration('enable_slam'),
             'use_rviz': LaunchConfiguration('use_rviz'),
             'use_lidar': LaunchConfiguration('use_lidar'),
             'lidar_port': LaunchConfiguration('lidar_port'),
@@ -111,15 +112,14 @@ def generate_launch_description():
             'gps_port': LaunchConfiguration('gps_port'),
             'gps_baud': LaunchConfiguration('gps_baud'),
             'use_gps_odom': LaunchConfiguration('use_gps_odom')
-        }.items(),
-        condition=IfCondition(LaunchConfiguration('enable_slam'))
+        }.items()
     )
 
     # 2. Telemetry & Video Bridge (:9090 & :8080)
     bridge_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(bridge_launch_file),
         launch_arguments={
-            'scan_mode': LaunchConfiguration('scan_mode')
+            'mapping_mode': LaunchConfiguration('mapping_mode')
         }.items()
     )
 
@@ -131,7 +131,7 @@ def generate_launch_description():
     return LaunchDescription([
         use_rviz_arg,
         enable_slam_arg,
-        scan_mode_arg,
+        mapping_mode_arg,
         use_lidar_arg,
         lidar_port_arg,
         lidar_baud_arg,

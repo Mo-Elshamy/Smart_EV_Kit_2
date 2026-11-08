@@ -450,24 +450,46 @@ Stage 7 introduces a zero-install, browser-based **Web Command Center** (`ev_web
     2. `[2D/3D Map]` — Interactive 2D SLAM grid with live laser overlay and 3D spatial view.
     3. `[GPS Map]` — Full-screen Leaflet satellite map and vehicle orientation HUD.
 
-#### C. Master Launch Options
+#### C. Master Launch Options & Dedicated Scanning Workflows
 
-The system provides two tailored master launch files depending on whether you are running from a remote browser or locally on a workstation display:
+You can run **2D SLAM mapping** and **3D spatial scanning** as completely separate, dedicated workflows to avoid resource contention, or run the unified multi-sensor stack:
 
-##### 🌐 Option 1: Master System with Web Command Center (`system_web.launch.py`)
-Brings up all sensors, kinematics, EKF localization, SLAM, and the Web Command Center. Operates headlessly by default for maximum Jetson GPU performance:
+##### 🗺️ Dedicated Option 1: 2D SLAM Mapping Only (Max CPU & Clean Map Output)
+Runs Slamtec RPLIDAR S3 (`DenseBoost`, 10 Hz) + WitMotion WT901 IMU + Holybro M9N GNSS + EKF Odometry + SLAM Toolbox (Ceres solver) + Web Command Center. Heavy 3D depth point cloud streaming is completely disabled, dedicating 100% of the Jetson's compute to generating pristine, non-overlapping 2D occupancy grids:
 ```bash
-# Launch entire system with Web Command Center (:3000):
-ros2 launch ev_bringup system_web.launch.py
+# One-click shell script:
+~/launch_2d_slam.sh
 
-# With custom sensor ports or bench flags:
-ros2 launch ev_bringup system_web.launch.py lidar_port:=/dev/ttyUSB0 use_imu:=false use_gps:=false
+# Or via ROS 2 launch:
+ros2 launch ev_bringup system_2d.launch.py
+```
+
+##### 🌐 Dedicated Option 2: 3D Spatial Scanning Only (Max GPU & Dense Reconstruction)
+Runs Stereolabs ZED 2i Stereo Depth + CUDA Spatial Mapping + Dense Point Cloud (5,000 pts/frame @ 4 Hz) + Visual Odometry + Web Command Center. 2D SLAM Toolbox and LiDAR are completely disabled, freeing all CPU and GPU memory bandwidth for rich 3D spatial reconstruction and OBJ mesh exports:
+```bash
+# One-click shell script:
+~/launch_3d_scan.sh
+
+# Or via ROS 2 launch:
+ros2 launch ev_bringup system_3d.launch.py
+```
+
+##### 🔀 Option 3: Unified Master System (`system_web.launch.py`)
+Brings up all sensors, kinematics, EKF localization, and the Web Command Center with runtime mode selection:
+```bash
+# One-click shell script (supports mode argument: 2d, 3d, or hybrid):
+~/launch_system_web.sh 2d         # Dedicated 2D SLAM mode
+~/launch_system_web.sh 3d         # Dedicated 3D Scan mode
+~/launch_system_web.sh hybrid     # Balanced split mode (default)
+
+# Or via ROS 2 launch:
+ros2 launch ev_bringup system_web.launch.py mapping_mode:=2d
 ```
 Open **`http://<JETSON_IP>:3000`** on your laptop or phone.
 
 ---
 
-##### 🖥️ Option 2: Master System with Dedicated RViz 2 (`system_rviz.launch.py`)
+##### 🖥️ Option 4: Master System with Dedicated RViz 2 (`system_rviz.launch.py`)
 Brings up all sensors, kinematics, EKF, and SLAM, loading an all-inclusive, pre-configured RViz 2 profile (`full_system_rviz.rviz`). Zero web overhead:
 ```bash
 # Launch entire system with comprehensive RViz 2 workspace:

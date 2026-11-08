@@ -56,10 +56,11 @@ def find_imu_port(fallback='/dev/ttyIMU'):
     """
     Auto-detects WitMotion WT901 IMU (CH340 / QinHeng / 1a86:7523).
     Checks udev symlinks, /dev/serial/by-id/, and available serial ports.
+    Resolves symlinks to canonical device nodes so Qt/QSerialPort opens cleanly.
     """
     port = fallback
     if os.path.exists('/dev/ttyIMU'):
-        port = '/dev/ttyIMU'
+        port = os.path.realpath('/dev/ttyIMU')
     else:
         by_id_dir = '/dev/serial/by-id'
         if os.path.exists(by_id_dir):
@@ -75,6 +76,8 @@ def find_imu_port(fallback='/dev/ttyIMU'):
             if len(ttys) > 1:
                 port = ttys[1]
 
+    if port and os.path.exists(port):
+        port = os.path.realpath(port)
     release_port_locks(port)
     return port
 

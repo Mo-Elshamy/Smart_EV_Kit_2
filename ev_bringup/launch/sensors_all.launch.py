@@ -89,6 +89,7 @@ def generate_launch_description():
             'serial_port': LaunchConfiguration('lidar_port'),
             'serial_baudrate': LaunchConfiguration('lidar_baud'),
             'frame_id': 'laser_frame',
+            'scan_mode': 'DenseBoost',
             'use_filter': 'true'
         }.items(),
         condition=IfCondition(LaunchConfiguration('use_lidar'))

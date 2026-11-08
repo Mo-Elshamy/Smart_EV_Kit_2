@@ -559,10 +559,10 @@ const MapRenderer = {
     });
   },
 
-  setScanMode(mode) {
+  applyScanModeLayout(mode, notifyBridge = false) {
     if (mode !== '2d' && mode !== '3d' && mode !== 'hybrid') mode = 'hybrid';
     this.scanMode = mode;
-    console.log(`[MapRenderer] Setting scan mode: ${mode}`);
+    console.log(`[MapRenderer] Applying scan mode layout: ${mode}`);
 
     // 1. Update UI button states
     ['2d', 'hybrid', '3d'].forEach((m) => {
@@ -584,14 +584,12 @@ const MapRenderer = {
           this.resize2D();
           this.render2D();
         }, 80);
-        this.showToast('Switched to 2D SLAM Only (Max LiDAR + EKF performance)', 'info');
       } else if (mode === '3d') {
         container.classList.add('mode-3d-only');
         setTimeout(() => {
           this.resize3D();
           this.start3DAnimation();
         }, 80);
-        this.showToast('Switched to 3D Scan Only (Dense Point Cloud & Depth Mapping)', 'info');
       } else {
         setTimeout(() => {
           this.resize2D();
@@ -599,13 +597,23 @@ const MapRenderer = {
           this.resize3D();
           this.start3DAnimation();
         }, 80);
-        this.showToast('Switched to Split Mode (2D SLAM + 3D View)', 'info');
       }
     }
 
-    // 3. Inform ROSBridge to adjust backend topic subscriptions
-    if (window.ROSBridge && window.ROSBridge.setScanMode) {
+    // 3. Inform ROSBridge to adjust backend topic subscriptions if user-initiated
+    if (notifyBridge && window.ROSBridge && window.ROSBridge.setScanMode) {
       window.ROSBridge.setScanMode(mode);
+    }
+  },
+
+  setScanMode(mode) {
+    this.applyScanModeLayout(mode, true);
+    if (mode === '2d') {
+      this.showToast('Switched to 2D SLAM Only (Max LiDAR + EKF performance)', 'info');
+    } else if (mode === '3d') {
+      this.showToast('Switched to 3D Scan Only (Dense Point Cloud & Depth Mapping)', 'info');
+    } else {
+      this.showToast('Switched to Split Mode (2D SLAM + 3D View)', 'info');
     }
   },
 
@@ -689,6 +697,14 @@ const MapRenderer = {
     // 4. Process Stereolabs ZED 2i 3D Point Cloud (/zed/zed_node/point_cloud/cloud_registered)
     window.ROSBridge.on('pointcloud', (msg) => {
       this.updateZEDPointCloud(msg);
+    });
+
+    // 5. Dynamic scan mode synchronization from backend status
+    window.ROSBridge.on('scan_mode_status', (mode) => {
+      if (mode && mode !== this.scanMode) {
+        console.log(`[MapRenderer] Syncing layout with active backend mode: ${mode}`);
+        this.applyScanModeLayout(mode, false);
+      }
     });
   },
 

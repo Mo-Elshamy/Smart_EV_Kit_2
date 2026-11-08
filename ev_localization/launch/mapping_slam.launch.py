@@ -24,6 +24,11 @@ def generate_launch_description():
     slam_launch_file = os.path.join(pkg_slam_toolbox, 'launch', 'online_async_launch.py')
 
     # Launch Arguments
+    enable_slam_arg = DeclareLaunchArgument(
+        'enable_slam',
+        default_value='true',
+        description='Launch slam_toolbox for 2D occupancy grid generation'
+    )
     use_rviz_arg = DeclareLaunchArgument(
         'use_rviz',
         default_value='true',
@@ -97,6 +102,7 @@ def generate_launch_description():
             'serial_port': LaunchConfiguration('lidar_port'),
             'serial_baudrate': LaunchConfiguration('lidar_baud'),
             'frame_id': 'laser_frame',
+            'scan_mode': 'DenseBoost',
             'use_filter': 'true'
         }.items(),
         condition=IfCondition(LaunchConfiguration('use_lidar'))
@@ -125,7 +131,8 @@ def generate_launch_description():
             'slam_params_file': LaunchConfiguration('slam_params_file'),
             'use_sim_time': 'false',
             'autostart': 'true'
-        }.items()
+        }.items(),
+        condition=IfCondition(LaunchConfiguration('enable_slam'))
     )
 
     # 4. RViz 2 Visualizer
@@ -139,6 +146,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        enable_slam_arg,
         use_rviz_arg,
         use_lidar_arg,
         lidar_port_arg,
