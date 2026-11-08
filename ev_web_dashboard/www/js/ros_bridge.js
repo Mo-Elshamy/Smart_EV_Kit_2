@@ -120,7 +120,7 @@ const ROSBridge = {
       ros: this.ros,
       name: '/map',
       messageType: 'nav_msgs/OccupancyGrid',
-      throttle_rate: 1000
+      throttle_rate: 1500
     });
     mapTopic.subscribe((message) => {
       this.notifyListeners('map', message);
@@ -131,7 +131,7 @@ const ROSBridge = {
       ros: this.ros,
       name: '/scan_filtered',
       messageType: 'sensor_msgs/LaserScan',
-      throttle_rate: 100
+      throttle_rate: 150
     });
     scanTopic.subscribe((message) => {
       this.notifyListeners('scan', message);
@@ -142,7 +142,7 @@ const ROSBridge = {
       ros: this.ros,
       name: '/odometry/filtered',
       messageType: 'nav_msgs/Odometry',
-      throttle_rate: 50
+      throttle_rate: 100
     });
     odomTopic.subscribe((message) => {
       this.updateTelemetryOdom(message);
@@ -154,7 +154,7 @@ const ROSBridge = {
       ros: this.ros,
       name: '/imu/data',
       messageType: 'sensor_msgs/Imu',
-      throttle_rate: 100
+      throttle_rate: 150
     });
     imuTopic.subscribe((message) => {
       this.updateTelemetryImu(message);
@@ -166,7 +166,7 @@ const ROSBridge = {
       ros: this.ros,
       name: '/fix',
       messageType: 'sensor_msgs/NavSatFix',
-      throttle_rate: 200
+      throttle_rate: 500
     });
     gpsTopic.subscribe((message) => {
       this.updateTelemetryGps(message);
@@ -178,7 +178,7 @@ const ROSBridge = {
       ros: this.ros,
       name: '/zed/point_cloud_downsampled',
       messageType: 'sensor_msgs/PointCloud2',
-      throttle_rate: 300
+      throttle_rate: 400
     });
     pointCloudTopic.subscribe((message) => {
       this.notifyListeners('pointcloud', message);

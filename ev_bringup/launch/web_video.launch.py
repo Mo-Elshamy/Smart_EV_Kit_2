@@ -47,7 +47,8 @@ def generate_launch_description():
             'ssl': False,
             'retry_startup_delay': 2.0,
             'use_compression': False,
-            'max_message_size': 50000000
+            'max_message_size': 50000000,
+            'write_queue_size': 2048
         }]
     )
 
