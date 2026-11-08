@@ -7,24 +7,15 @@ const ROSBridge = {
   ros: null,
   connected: false,
   reconnectInterval: 3000,
-  currentScanMode: 'hybrid',
-  topics: {},
-  isMapSubscribed: false,
-  isPointCloudSubscribed: false,
-  mapHandler: null,
-  pointCloudHandler: null,
-  scanModeTopic: null,
-  scanModeStatusTopic: null,
   listeners: {
     connection: [],
     map: [],
     scan: [],
     odom: [],
+    tf: [],
     imu: [],
     gps: [],
-    pointcloud: [],
-    scan_mode_changed: [],
-    scan_mode_status: []
+    pointcloud: []
   },
 
   init() {
@@ -107,9 +98,6 @@ const ROSBridge = {
     this.ros.on('close', () => {
       console.log('[ROSBridge] Connection closed. Retrying in 3s...');
       this.connected = false;
-      this.topics = {};
-      this.isMapSubscribed = false;
-      this.isPointCloudSubscribed = false;
       this.updateStatus('DISCONNECTED', 'danger');
       this.notifyListeners('connection', false);
       setTimeout(() => this.init(), this.reconnectInterval);
@@ -128,175 +116,93 @@ const ROSBridge = {
   },
 
   setupSubscriptions() {
-    if (this.topics.map) return; // Prevent duplicate subscriptions
-
-    this.mapHandler = (message) => {
-      this.notifyListeners('map', message);
-    };
-
-    this.pointCloudHandler = (message) => {
-      this.notifyListeners('pointcloud', message);
-    };
-
     // 1. Occupancy Grid (/map)
-    this.topics.map = new ROSLIB.Topic({
+    const mapTopic = new ROSLIB.Topic({
       ros: this.ros,
       name: '/map',
       messageType: 'nav_msgs/OccupancyGrid',
       throttle_rate: 1500
     });
-    this.topics.map.subscribe(this.mapHandler);
-    this.isMapSubscribed = true;
+    mapTopic.subscribe((message) => {
+      this.notifyListeners('map', message);
+    });
 
     // 2. Filtered LiDAR Scan (/scan_filtered)
-    this.topics.scan = new ROSLIB.Topic({
+    const scanTopic = new ROSLIB.Topic({
       ros: this.ros,
       name: '/scan_filtered',
       messageType: 'sensor_msgs/LaserScan',
       throttle_rate: 150
     });
-    this.topics.scan.subscribe((message) => {
+    scanTopic.subscribe((message) => {
       this.notifyListeners('scan', message);
     });
 
     // 3. EKF Filtered Odometry (/odometry/filtered)
-    this.topics.odom = new ROSLIB.Topic({
+    const odomTopic = new ROSLIB.Topic({
       ros: this.ros,
       name: '/odometry/filtered',
       messageType: 'nav_msgs/Odometry',
       throttle_rate: 100
     });
-    this.topics.odom.subscribe((message) => {
+    odomTopic.subscribe((message) => {
       this.updateTelemetryOdom(message);
       this.notifyListeners('odom', message);
     });
 
     // 4. WitMotion IMU (/imu/data)
-    this.topics.imu = new ROSLIB.Topic({
+    const imuTopic = new ROSLIB.Topic({
       ros: this.ros,
       name: '/imu/data',
       messageType: 'sensor_msgs/Imu',
       throttle_rate: 150
     });
-    this.topics.imu.subscribe((message) => {
+    imuTopic.subscribe((message) => {
       this.updateTelemetryImu(message);
       this.notifyListeners('imu', message);
     });
 
     // 5. Holybro M9N GNSS (/fix)
-    this.topics.gps = new ROSLIB.Topic({
+    const gpsTopic = new ROSLIB.Topic({
       ros: this.ros,
       name: '/fix',
       messageType: 'sensor_msgs/NavSatFix',
       throttle_rate: 500
     });
-    this.topics.gps.subscribe((message) => {
+    gpsTopic.subscribe((message) => {
       this.updateTelemetryGps(message);
       this.notifyListeners('gps', message);
     });
 
     // 6. Stereolabs ZED 2i 3D Depth Point Cloud (Bandwidth-optimized downsampled topic)
-    this.topics.pointcloud = new ROSLIB.Topic({
+    const pointCloudTopic = new ROSLIB.Topic({
       ros: this.ros,
       name: '/zed/point_cloud_downsampled',
       messageType: 'sensor_msgs/PointCloud2',
       throttle_rate: 400
     });
-    this.topics.pointcloud.subscribe(this.pointCloudHandler);
-    this.isPointCloudSubscribed = true;
+    pointCloudTopic.subscribe((message) => {
+      this.notifyListeners('pointcloud', message);
+    });
 
-    // 7. Dynamic Scan Mode Publisher & Status Subscriber
-    this.scanModeTopic = new ROSLIB.Topic({
+    // 7. TF Tree (/tf) to track slam_toolbox map -> odom correction
+    const tfTopic = new ROSLIB.Topic({
       ros: this.ros,
-      name: '/scan_mode',
-      messageType: 'std_msgs/String'
+      name: '/tf',
+      messageType: 'tf2_msgs/TFMessage',
+      throttle_rate: 100
     });
-
-    this.scanModeStatusTopic = new ROSLIB.Topic({
-      ros: this.ros,
-      name: '/scan_mode_status',
-      messageType: 'std_msgs/String',
-      throttle_rate: 500
-    });
-    this.scanModeStatusTopic.subscribe((message) => {
-      if (message && message.data) {
-        this.notifyListeners('scan_mode_status', message.data);
+    tfTopic.subscribe((message) => {
+      if (message && Array.isArray(message.transforms)) {
+        for (let i = 0; i < message.transforms.length; i++) {
+          const t = message.transforms[i];
+          const parent = (t.header && t.header.frame_id ? t.header.frame_id : '').replace(/^\//, '');
+          const child = (t.child_frame_id || '').replace(/^\//, '');
+          if (parent === 'map' && child === 'odom') {
+            this.notifyListeners('tf', t);
+          }
+        }
       }
-    });
-
-    // Synchronize current mode with backend
-    if (this.currentScanMode) {
-      this.setScanMode(this.currentScanMode);
-    }
-  },
-
-  setScanMode(mode) {
-    if (mode !== '2d' && mode !== '3d' && mode !== 'hybrid') mode = 'hybrid';
-    this.currentScanMode = mode;
-    console.log(`[ROSBridge] Scan mode requested: ${mode}`);
-
-    // Publish to ROS /scan_mode topic
-    if (this.scanModeTopic && this.connected) {
-      const msg = new ROSLIB.Message({ data: mode });
-      this.scanModeTopic.publish(msg);
-    }
-
-    if (mode === '2d') {
-      // 2D SLAM Only: Unsubscribe point cloud to free 100% of network & client CPU
-      if (this.topics.pointcloud && this.isPointCloudSubscribed) {
-        this.topics.pointcloud.unsubscribe();
-        this.isPointCloudSubscribed = false;
-        console.log('[ROSBridge] Point cloud topic unsubscribed (2D Mode)');
-      }
-      // Ensure /map is subscribed
-      if (this.topics.map && !this.isMapSubscribed && this.mapHandler) {
-        this.topics.map.subscribe(this.mapHandler);
-        this.isMapSubscribed = true;
-        console.log('[ROSBridge] Map topic subscribed (2D Mode)');
-      }
-    } else if (mode === '3d') {
-      // 3D Scan Only: Unsubscribe /map to allocate maximum bandwidth to 3D point cloud
-      if (this.topics.map && this.isMapSubscribed) {
-        this.topics.map.unsubscribe();
-        this.isMapSubscribed = false;
-        console.log('[ROSBridge] Map topic unsubscribed (3D Mode)');
-      }
-      // Ensure point cloud is subscribed
-      if (this.topics.pointcloud && !this.isPointCloudSubscribed && this.pointCloudHandler) {
-        this.topics.pointcloud.subscribe(this.pointCloudHandler);
-        this.isPointCloudSubscribed = true;
-        console.log('[ROSBridge] Point cloud topic subscribed (3D Mode)');
-      }
-      this.enableZedMapping(true);
-    } else {
-      // Split Hybrid Mode: Both subscribed
-      if (this.topics.map && !this.isMapSubscribed && this.mapHandler) {
-        this.topics.map.subscribe(this.mapHandler);
-        this.isMapSubscribed = true;
-      }
-      if (this.topics.pointcloud && !this.isPointCloudSubscribed && this.pointCloudHandler) {
-        this.topics.pointcloud.subscribe(this.pointCloudHandler);
-        this.isPointCloudSubscribed = true;
-      }
-    }
-
-    this.notifyListeners('scan_mode_changed', mode);
-  },
-
-  enableZedMapping(enable, callback) {
-    if (!this.ros || !this.connected) return;
-    const srv = new ROSLIB.Service({
-      ros: this.ros,
-      name: '/zed/zed_node/enable_mapping',
-      serviceType: 'std_srvs/srv/SetBool'
-    });
-    const req = new ROSLIB.ServiceRequest({ data: !!enable });
-    srv.callService(req, (res) => {
-      console.log('[ROSBridge] ZED enable_mapping response:', res);
-      if (callback) callback(true, res);
-    }, (err) => {
-      // Silently ignore if mapping service is optional
-      if (callback) callback(false, err);
     });
   },
 
@@ -375,7 +281,37 @@ const ROSBridge = {
       if (callback) callback(false, 'Not connected to ROS WebSocket bridge (:9090)');
       return;
     }
-    console.log('[ROSBridge] Calling /slam_toolbox/reset...');
+    console.log('[ROSBridge] Calling /slam_toolbox/reset & resetting odometry...');
+
+    // Also reset ZED visual odometry and EKF state to (0, 0, 0)
+    try {
+      const zedResetSrv = new ROSLIB.Service({
+        ros: this.ros,
+        name: '/zed/zed_node/reset_odometry',
+        serviceType: 'std_srvs/srv/Trigger'
+      });
+      zedResetSrv.callService(new ROSLIB.ServiceRequest({}), () => {}, () => {});
+
+      const ekfSetPoseSrv = new ROSLIB.Service({
+        ros: this.ros,
+        name: '/set_pose',
+        serviceType: 'robot_localization/srv/SetPose'
+      });
+      ekfSetPoseSrv.callService(new ROSLIB.ServiceRequest({
+        pose: {
+          header: { frame_id: 'odom' },
+          pose: {
+            pose: {
+              position: { x: 0.0, y: 0.0, z: 0.0 },
+              orientation: { x: 0.0, y: 0.0, z: 0.0, w: 1.0 }
+            }
+          }
+        }
+      }), () => {}, () => {});
+    } catch (e) {
+      console.warn('[ROSBridge] Auxiliary odometry reset warning:', e);
+    }
+
     const srv = new ROSLIB.Service({
       ros: this.ros,
       name: '/slam_toolbox/reset',
@@ -386,7 +322,7 @@ const ROSBridge = {
     });
     srv.callService(req, (res) => {
       console.log('[ROSBridge] Reset SLAM response:', res);
-      if (callback) callback(true, 'SLAM mapping restarted from scratch');
+      if (callback) callback(true, 'SLAM mapping & odometry restarted from scratch');
     }, (err) => {
       console.error('[ROSBridge] Reset SLAM error:', err);
       if (callback) callback(false, String(err || 'Failed to call /slam_toolbox/reset'));
@@ -400,7 +336,7 @@ const ROSBridge = {
     }
     const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const targetName = (mapName || `ev_map_${stamp}`).trim();
-    const fullPath = `/home/qrsmartev/ev_ws/maps/${targetName}`;
+    const fullPath = `/home/rqsmartev/ev_ws/maps/${targetName}`;
 
     console.log(`[ROSBridge] Saving map to ${fullPath}...`);
     const srv = new ROSLIB.Service({

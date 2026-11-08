@@ -14,6 +14,8 @@ const MapRenderer = {
   mapOffscreenCanvas: null,
   lastScan: null,
   robotPose: { x: 0, y: 0, yaw: 0 },
+  mapToOdom: { x: 0, y: 0, yaw: 0 },
+  odomToBase: { x: 0, y: 0, yaw: 0 },
   poseTrail: [],
   scale: 25.0, // pixels per meter
   panX: 0,
@@ -50,14 +52,6 @@ const MapRenderer = {
   zedAccumIndex: 0,
   zedAccumCount: 0,
   lastZedAccumPose: { x: null, y: null, yaw: null },
-
-  // Scan Mode & 3D Voxel Hash De-duplication
-  scanMode: 'hybrid',
-  voxelSet: new Set(),
-  voxelResolution: 0.025, // 2.5 cm spatial voxel grid hash
-  MAX_VOXEL_SET_SIZE: 150000,
-  isAnimating3D: false,
-  animationFrameId: null,
 
   // 3D Orbit Controls
   orbit3D: {
@@ -281,29 +275,9 @@ const MapRenderer = {
 
   animate3D() {
     if (!this.is3DInitialized) return;
-    if (this.scanMode === '2d') {
-      this.isAnimating3D = false;
-      return; // Do not schedule next frame while in 2D Only mode
-    }
-    this.isAnimating3D = true;
-    this.animationFrameId = requestAnimationFrame(() => this.animate3D());
+    requestAnimationFrame(() => this.animate3D());
     if (this.renderer3D && this.scene3D && this.camera3D) {
       this.renderer3D.render(this.scene3D, this.camera3D);
-    }
-  },
-
-  start3DAnimation() {
-    if (!this.isAnimating3D && this.is3DInitialized && this.scanMode !== '2d') {
-      this.isAnimating3D = true;
-      this.animate3D();
-    }
-  },
-
-  stop3DAnimation() {
-    this.isAnimating3D = false;
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
     }
   },
 
@@ -480,6 +454,9 @@ const MapRenderer = {
             if (success) {
               this.mapData = null;
               this.poseTrail = [];
+              this.mapToOdom = { x: 0, y: 0, yaw: 0 };
+              this.odomToBase = { x: 0, y: 0, yaw: 0 };
+              this.robotPose = { x: 0, y: 0, yaw: 0 };
               this.clear3DAccumulation();
               if (this.mapMesh3D) {
                 this.scene3D.remove(this.mapMesh3D);
@@ -489,6 +466,7 @@ const MapRenderer = {
               if (this.mapObstacles3D) {
                 this.mapObstacles3D.geometry.setDrawRange(0, 0);
               }
+              this.centerOnRobot();
               this.render2D();
               this.showToast('✓ ' + msg, 'success');
             } else {
@@ -547,74 +525,6 @@ const MapRenderer = {
         }
       });
     }
-
-    // Dynamic Scan Mode Buttons (2D SLAM Only / Split / 3D Scan Only)
-    ['2d', 'hybrid', '3d'].forEach((mode) => {
-      const btn = document.getElementById(`btn-mode-${mode}`);
-      if (btn) {
-        btn.addEventListener('click', () => {
-          this.setScanMode(mode);
-        });
-      }
-    });
-  },
-
-  applyScanModeLayout(mode, notifyBridge = false) {
-    if (mode !== '2d' && mode !== '3d' && mode !== 'hybrid') mode = 'hybrid';
-    this.scanMode = mode;
-    console.log(`[MapRenderer] Applying scan mode layout: ${mode}`);
-
-    // 1. Update UI button states
-    ['2d', 'hybrid', '3d'].forEach((m) => {
-      const btn = document.getElementById(`btn-mode-${m}`);
-      if (btn) {
-        if (m === mode) btn.classList.add('active');
-        else btn.classList.remove('active');
-      }
-    });
-
-    // 2. Adjust Viewport Layout Classes & Render loops
-    const container = document.getElementById('mapping-split-container');
-    if (container) {
-      container.classList.remove('mode-2d-only', 'mode-3d-only', 'view-3d-maximized');
-      if (mode === '2d') {
-        container.classList.add('mode-2d-only');
-        this.stop3DAnimation();
-        setTimeout(() => {
-          this.resize2D();
-          this.render2D();
-        }, 80);
-      } else if (mode === '3d') {
-        container.classList.add('mode-3d-only');
-        setTimeout(() => {
-          this.resize3D();
-          this.start3DAnimation();
-        }, 80);
-      } else {
-        setTimeout(() => {
-          this.resize2D();
-          this.render2D();
-          this.resize3D();
-          this.start3DAnimation();
-        }, 80);
-      }
-    }
-
-    // 3. Inform ROSBridge to adjust backend topic subscriptions if user-initiated
-    if (notifyBridge && window.ROSBridge && window.ROSBridge.setScanMode) {
-      window.ROSBridge.setScanMode(mode);
-    }
-  },
-
-  setScanMode(mode) {
-    this.applyScanModeLayout(mode, true);
-    if (mode === '2d') {
-      this.showToast('Switched to 2D SLAM Only (Max LiDAR + EKF performance)', 'info');
-    } else if (mode === '3d') {
-      this.showToast('Switched to 3D Scan Only (Dense Point Cloud & Depth Mapping)', 'info');
-    } else {
-      this.showToast('Switched to Split Mode (2D SLAM + 3D View)', 'info');
-    }
   },
 
   centerOnRobot() {
@@ -660,7 +570,20 @@ const MapRenderer = {
       this.render2D();
     });
 
-    // 3. Process Robot Odometry (/odometry/filtered)
+    // 3. Process SLAM map -> odom Transform (/tf)
+    window.ROSBridge.on('tf', (tfMsg) => {
+      if (!tfMsg || !tfMsg.transform) return;
+      const tr = tfMsg.transform.translation;
+      const q = tfMsg.transform.rotation;
+      const siny_cosp = 2 * (q.w * q.z + q.x * q.y);
+      const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
+      this.mapToOdom.x = tr.x || 0;
+      this.mapToOdom.y = tr.y || 0;
+      this.mapToOdom.yaw = Math.atan2(siny_cosp, cosy_cosp);
+      this.recomputeMapPose();
+    });
+
+    // 4. Process Robot Odometry (/odometry/filtered: odom -> base_link)
     window.ROSBridge.on('odom', (msg) => {
       const pos = msg.pose.pose.position;
       const q = msg.pose.pose.orientation;
@@ -670,21 +593,23 @@ const MapRenderer = {
       const cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
       const yaw = Math.atan2(siny_cosp, cosy_cosp);
 
-      this.robotPose.x = pos.x;
-      this.robotPose.y = pos.y;
-      this.robotPose.yaw = yaw;
+      this.odomToBase.x = pos.x;
+      this.odomToBase.y = pos.y;
+      this.odomToBase.yaw = yaw;
+
+      this.recomputeMapPose();
 
       // Add to trajectory trail
       const lastPoint = this.poseTrail[this.poseTrail.length - 1];
-      if (!lastPoint || Math.hypot(lastPoint.x - pos.x, lastPoint.y - pos.y) > 0.08) {
-        this.poseTrail.push({ x: pos.x, y: pos.y });
+      if (!lastPoint || Math.hypot(lastPoint.x - this.robotPose.x, lastPoint.y - this.robotPose.y) > 0.08) {
+        this.poseTrail.push({ x: this.robotPose.x, y: this.robotPose.y });
         if (this.poseTrail.length > 600) this.poseTrail.shift();
       }
 
       // Update 3D Robot Pose
       if (this.robotMesh3D) {
-        this.robotMesh3D.position.set(pos.x, pos.y, 0);
-        this.robotMesh3D.rotation.z = yaw;
+        this.robotMesh3D.position.set(this.robotPose.x, this.robotPose.y, 0);
+        this.robotMesh3D.rotation.z = this.robotPose.yaw;
       }
 
       if (this.followRobot) {
@@ -694,18 +619,19 @@ const MapRenderer = {
       }
     });
 
-    // 4. Process Stereolabs ZED 2i 3D Point Cloud (/zed/zed_node/point_cloud/cloud_registered)
+    // 5. Process Stereolabs ZED 2i 3D Point Cloud (/zed/point_cloud_downsampled)
     window.ROSBridge.on('pointcloud', (msg) => {
       this.updateZEDPointCloud(msg);
     });
+  },
 
-    // 5. Dynamic scan mode synchronization from backend status
-    window.ROSBridge.on('scan_mode_status', (mode) => {
-      if (mode && mode !== this.scanMode) {
-        console.log(`[MapRenderer] Syncing layout with active backend mode: ${mode}`);
-        this.applyScanModeLayout(mode, false);
-      }
-    });
+  recomputeMapPose() {
+    const cosM = Math.cos(this.mapToOdom.yaw);
+    const sinM = Math.sin(this.mapToOdom.yaw);
+    this.robotPose.x = this.mapToOdom.x + this.odomToBase.x * cosM - this.odomToBase.y * sinM;
+    this.robotPose.y = this.mapToOdom.y + this.odomToBase.x * sinM + this.odomToBase.y * cosM;
+    const totalYaw = this.mapToOdom.yaw + this.odomToBase.yaw;
+    this.robotPose.yaw = Math.atan2(Math.sin(totalYaw), Math.cos(totalYaw));
   },
 
   // =========================================================================
@@ -897,9 +823,6 @@ const MapRenderer = {
     this.zedAccumIndex = 0;
     this.zedAccumCount = 0;
     this.lastZedAccumPose = { x: null, y: null, yaw: null };
-    if (this.voxelSet) {
-      this.voxelSet.clear();
-    }
     if (this.zedPoints3D) {
       this.zedPoints3D.geometry.setDrawRange(0, 0);
       this.zedPoints3D.geometry.attributes.position.needsUpdate = true;
@@ -908,7 +831,7 @@ const MapRenderer = {
       this.zedAccumPoints3D.geometry.setDrawRange(0, 0);
       this.zedAccumPoints3D.geometry.attributes.position.needsUpdate = true;
     }
-    console.log('[MapRenderer] ZED 3D Depth Point Cloud Buffers & Voxel Grid Cleared');
+    console.log('[MapRenderer] ZED 3D Depth Point Cloud Buffers Cleared');
   },
 
   // =========================================================================
@@ -1055,30 +978,18 @@ const MapRenderer = {
         pIdx += 3;
       }
 
-      // 2. Persistent 3D World Map Accumulation (Voxel Grid De-duplication)
-      if (shouldAccumulate && accumPosArr && accumColArr) {
-        const vx = Math.round(wx / this.voxelResolution);
-        const vy = Math.round(wy / this.voxelResolution);
-        const vz = Math.round(wz / this.voxelResolution);
-        const vKey = `${vx},${vy},${vz}`;
-
-        if (!this.voxelSet.has(vKey)) {
-          this.voxelSet.add(vKey);
-          if (this.voxelSet.size > this.MAX_VOXEL_SET_SIZE) {
-            this.voxelSet.clear();
-          }
-
-          const aIdx = (this.zedAccumIndex % this.MAX_ZED_ACCUM_POINTS) * 3;
-          accumPosArr[aIdx] = wx;
-          accumPosArr[aIdx + 1] = wy;
-          accumPosArr[aIdx + 2] = wz;
-          accumColArr[aIdx] = rCol;
-          accumColArr[aIdx + 1] = gCol;
-          accumColArr[aIdx + 2] = bCol;
-          this.zedAccumIndex++;
-          if (this.zedAccumCount < this.MAX_ZED_ACCUM_POINTS) {
-            this.zedAccumCount++;
-          }
+      // 2. Persistent 3D World Map Accumulation (sample evenly to balance capacity)
+      if (shouldAccumulate && accumPosArr && accumColArr && (sampleCounter++ % 3 === 0)) {
+        const aIdx = (this.zedAccumIndex % this.MAX_ZED_ACCUM_POINTS) * 3;
+        accumPosArr[aIdx] = wx;
+        accumPosArr[aIdx + 1] = wy;
+        accumPosArr[aIdx + 2] = wz;
+        accumColArr[aIdx] = rCol;
+        accumColArr[aIdx + 1] = gCol;
+        accumColArr[aIdx + 2] = bCol;
+        this.zedAccumIndex++;
+        if (this.zedAccumCount < this.MAX_ZED_ACCUM_POINTS) {
+          this.zedAccumCount++;
         }
       }
     }

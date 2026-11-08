@@ -200,44 +200,6 @@ body {
   gap: 6px;
 }
 
-/* Scan Mode Selector Bar */
-.mode-selector-bar {
-  display: inline-flex;
-  align-items: center;
-  background: #121212;
-  border: 1px solid #383838;
-  border-radius: 5px;
-  padding: 2px;
-  gap: 2px;
-  margin-right: 4px;
-}
-
-.mode-btn {
-  background: transparent;
-  color: #888888;
-  border: none;
-  border-radius: 3px;
-  padding: 3px 8px;
-  font-size: 0.70rem;
-  font-family: var(--font-mono);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.mode-btn:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.mode-btn.active {
-  background: #ffffff;
-  color: #000000;
-  font-weight: 800;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-}
-
 /* Monochrome Buttons */
 .btn-tool {
   background: #171717;
@@ -487,28 +449,12 @@ body {
   pointer-events: none;
 }
 
-/* Viewport Toggle Animation & Dedicated Scan Mode Layouts */
-.view-3d-maximized .viewport-2d,
-.mapping-split-container.mode-3d-only .viewport-2d {
-  display: none !important;
+/* Viewport Toggle Animation */
+.view-3d-maximized .viewport-2d {
+  display: none;
 }
-.view-3d-maximized .viewport-3d,
-.mapping-split-container.mode-3d-only .viewport-3d {
+.view-3d-maximized .viewport-3d {
   flex: 1;
-  width: 100%;
-  height: 100%;
-  display: flex;
-}
-
-.mapping-split-container.mode-2d-only .viewport-3d {
-  display: none !important;
-}
-.mapping-split-container.mode-2d-only .viewport-2d {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  border-bottom: none;
 }
 
 /* ========================================================================= */

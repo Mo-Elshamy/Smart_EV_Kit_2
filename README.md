@@ -595,15 +595,18 @@ Calibrated URDF physical joint origins in `sensor_mounts.xacro` and web visualiz
 - Default fallback GPS pin set to initial test coordinates (`25.322608, 55.487920`), auto-overridden smoothly the instant valid GNSS satellite fixes arrive.
 - High-contrast black/white occupancy grid styling with translucent free space and highlighted obstacle boundaries.
 
-### 5. Decoupled 2D SLAM vs. 3D Scanning Modes (Zero-Contention)
-- **Problem Fixed:** Running simultaneous high-bandwidth 3D depth point clouds and 2D SLAM map serialization saturated the Jetson CPU and WebSocket queue, causing map drops and ghosting.
-- **Dynamic Mode Control:** Segmented mode bar on the web dashboard lets the operator select:
-  - **`2D SLAM Only`**: 3D point cloud generation is completely paused on the Jetson (0% CPU, 0 KB/s network bandwidth). WebGL 3D render loop is stopped in the browser. 100% of compute is dedicated to LiDAR and EKF 2D occupancy grid generation.
-  - **`3D Scan Only`**: 2D map WebSocket subscription is suspended. The Jetson point cloud downsampler boosts target density to 5,000 pts/frame @ 4.0 Hz with Stereolabs spatial mapping integration. The WebGL 3D viewport expands to full-screen.
-  - **`Split (2D+3D)`**: Balanced multi-sensor mode streaming 1,500 pts/frame @ 2.5–3.0 Hz for concurrent 2D and 3D visualization.
-- **3D Voxel Hash De-duplication:** Accumulated 3D world depth points are filtered through a $2.5\text{ cm}^3$ spatial voxel hash grid. Stationary or slow vehicle scanning produces crisp, watertight point clouds without redundant point stacking.
+### 5. Stationary Rotation & Drift Elimination (EKF + ZED VIO + WT901 IMU)
+- **Problems Diagnosed & Fixed:**
+  1. **ZED SDK v5.2 `GEN_3` Positional Tracking Lockup (`zed2i_params.yaml`):** When `pos_tracking_mode` defaulted to `AUTO` (`GEN_3` in ZED SDK 5.2.3) with `area_memory: true`, stationary initialization (`spatial_memory_status: INITIALIZING`, `pose_confidence: 0`) caused `mZed->getPosition(deltaOdom, CAMERA)` to lock and repeat a stale non-zero frame delta (`twist.linear.x = -0.444 m/s`, `twist.angular.z = 0.1703 rad/s`) at 15 Hz indefinitely. Forced `pos_tracking_mode: 'GEN_1'` and `area_memory: false` so ZED provides pure, drift-free 2D local Visual-Inertial Odometry while `slam_toolbox` handles global loop closure (`map -> odom`).
+  2. **WitMotion WT901 IMU Covariance Rejection (`imu.launch.py`):** `witmotion_ros_node` defaulted `orientation_covariance[0]` and `angular_velocity_covariance[0]` to `-1.0` when covariance arrays were omitted from launch parameters. Per ROS `sensor_msgs/Imu` specification, `covariance[0] = -1.0` caused `robot_localization` (`ekf_filter_node`) to completely ignore `/imu/data`. Added explicit positive 3×3 diagonal covariance matrices (`0.0005` orientation, `0.0001` angular velocity, `0.01` linear acceleration) in `imu.launch.py`.
+  3. **EKF Heading & Velocity Decoupling (`ekf_fusion_params.yaml`):** Configured `odom0` (`/zed/zed_node/odom`) to fuse only forward/backward linear velocity (`vx`), and delegated yaw orientation and angular rate (`yaw`, `vyaw`) exclusively to the hardware WitMotion WT901 IMU (`/imu/data`). This prevents uncalibrated visual twist covariances (`0.0 -> 1e-9`) or dynamic obstacles passing in front of the camera from rotating the vehicle on the map.
+  4. **Full `map -> odom -> base_link` Transform Composition (`ros_bridge.js` & `map_renderer.js`):** Subscribed to `/tf` (`map -> odom`) in the Web Command Center so the vehicle pose and LiDAR scan overlay are rendered at the true global `map -> base_link` coordinates, and enhanced `Restart SLAM` to simultaneously reset `/slam_toolbox/reset`, `/zed/zed_node/reset_odometry`, and EKF `/set_pose`.
 
-### 6. Jetson Orin Nano Headless & MAXN_SUPER Optimization Script
+### 6. Dedicated 2D SLAM vs. 3D Scanning Launch Workflows
+- **Zero-Contention Backend Launchers:** Separate launch configurations allow running dedicated 2D SLAM (`~/launch_2d_slam.sh` / `system_2d.launch.py`), dedicated 3D spatial scanning (`~/launch_3d_scan.sh` / `system_3d.launch.py`), or unified hybrid mode (`~/launch_system_web.sh` / `system_web.launch.py`).
+- **Clean Dashboard Toolbar:** Preserves the clean 8-button mapping toolbar (`Follow: ON`, `Center`, `Reset View`, `Restart SLAM`, `Save 2D`, `Export 3D`, `Clear 3D`, `2D / 3D`) with bandwidth-throttled point cloud downsampling (`point_cloud_downsampler.py`) and rosbridge fragment reassembly.
+
+### 7. Jetson Orin Nano Headless & MAXN_SUPER Optimization Script
 - **Tool:** `optimize_jetson.sh` (located in workspace root and `ev_bringup/scripts/`).
 - **Headless Mode (`--headless`):** Disables `gdm3`, `Xorg`, and `gnome-shell`, freeing **~500 MB** of unified RAM/VRAM and eliminating display-server scheduling jitter when operating remotely over SSH.
 - **Max Performance (`--max-perf`):** Activates Power Mode 2 (`MAXN_SUPER`), unlocking 1.73 GHz CPU, 1020 MHz GPU, and 3.2 GHz memory bus clocks.

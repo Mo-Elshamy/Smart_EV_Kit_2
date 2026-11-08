@@ -20,20 +20,25 @@ ekf_filter_node:
 
     publish_tf: true
     publish_acceleration: false
+    dynamic_process_noise_covariance: true
 
     # =========================================================================
     # Sensor 1: ZED 2i Stereo Visual-Inertial Odometry
     # Topic: /zed/zed_node/odom (child_frame_id: zed_camera_link, +0.67m ahead of base_link)
-    # Fuses: Vx, Vy linear velocity and Vyaw angular rate (transformed to base_link via TF)
-    # Note: Pose (X, Y) is NOT fused directly because robot_localization does not
-    # compensate lever-arm offset on Odometry pose, which causes a 0.67m arc swing on turns.
+    # Fuses: Vx longitudinal linear velocity only.
+    # Note:
+    # - Pose (X, Y) is NOT fused directly because robot_localization does not
+    #   compensate lever-arm offset on Odometry pose, which causes a 0.67m arc swing on turns.
+    # - Vy and Vyaw are set to false because Ackermann steering has no lateral slip (Vy=0)
+    #   and ZED twist covariance defaults to 0.0 (1e-9), which would override the hardware IMU
+    #   and cause visual motion in front of the camera to rotate the vehicle on the map.
     # Matrix format: [x, y, z, roll, pitch, yaw, vx, vy, vz, vroll, vpitch, vyaw, ax, ay, az]
     # =========================================================================
     odom0: /zed/zed_node/odom
     odom0_config: [false, false, false,
                    false, false, false,
-                   true,  true,  false,
-                   false, false, true,
+                   true,  false, false,
+                   false, false, false,
                    false, false, false]
     odom0_queue_size: 10
     odom0_differential: false

@@ -31,6 +31,8 @@
 
     pos_tracking:
       pos_tracking_enabled: true    # Compute visual-inertial odometry (VIO)
+      pos_tracking_mode: 'GEN_1'    # Force GEN_1: prevents ZED SDK 5.2 GEN_3 locked-pose/velocity drift bug
+      area_memory: false            # Disable internal area memory (slam_toolbox manages global loop closure)
       imu_fusion: true              # Fuse ZED internal BMI085 IMU with visual odometry
       two_d_mode: true              # Constrain VIO to 2D ground plane (prevents pitch/roll wobble from drifting X/Y)
       fixed_z_value: 0.0
