@@ -1222,7 +1222,11 @@ const MapRenderer = {
     ctx.lineWidth = 2.0;
 
     ctx.beginPath();
-    ctx.roundRect(-length * 0.3, -width / 2, length, width, 4);
+    if (typeof ctx.roundRect === 'function') {
+      ctx.roundRect(-length * 0.3, -width / 2, length, width, 4);
+    } else {
+      ctx.rect(-length * 0.3, -width / 2, length, width);
+    }
     ctx.fill();
     ctx.stroke();
 

@@ -299,7 +299,6 @@ const ROSBridge = {
       if (callback) callback(false, err);
     });
   },
-  },
 
   updateTelemetryOdom(msg) {
     const vx = msg.twist.twist.linear.x;
